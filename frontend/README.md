@@ -71,7 +71,6 @@ frontend/
 
 ### 1. Install Dependencies
 ```bash
-cd frontend
 npm install
 ```
 
@@ -215,27 +214,3 @@ To switch from mock data to a live FastAPI server, update the `src/services/` la
   "notes": "Cold-mix asphalt patching for high-severity potholes."
 }
 ```
-
----
-
-## 🔒 Production Backend Integration Guide
-
-To point the frontend to your FastAPI server:
-1. Set the API Base URL in an `.env` file:
-   ```env
-   VITE_API_URL=http://localhost:8000/api/v1
-   ```
-2. In `src/services/`, replace the mock-data returns with:
-   ```ts
-   const API_URL = import.meta.env.VITE_API_URL || "";
-
-   export const roadsService = {
-     async getRoads(filter?: AreaFilter): Promise<Road[]> {
-       const params = new URLSearchParams(filter as any).toString();
-       const res = await fetch(`${API_URL}/roads?${params}`);
-       return res.json();
-     },
-     // ...
-   };
-   ```
-3. Since all domain types in `src/types/index.ts` strictly conform to the FastAPI contract, no UI component changes will be necessary!

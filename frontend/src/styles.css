@@ -1,0 +1,162 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+@import "leaflet/dist/leaflet.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * RoadSense design system — minimal enterprise GIS.
+ * Cool neutral surfaces, one deep teal accent, RHI condition scale.
+ */
+
+@theme inline {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --radius-2xl: calc(var(--radius) + 10px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* RHI condition scale */
+  --color-rhi-good: var(--rhi-good);
+  --color-rhi-fair: var(--rhi-fair);
+  --color-rhi-poor: var(--rhi-poor);
+  --color-rhi-critical: var(--rhi-critical);
+
+  --shadow-panel: 0 1px 2px oklch(0.2 0.02 240 / 0.06), 0 0 0 1px oklch(0.2 0.02 240 / 0.04);
+}
+
+:root {
+  --radius: 0.375rem;
+  --background: oklch(0.975 0.004 240);
+  --foreground: oklch(0.22 0.02 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.02 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.02 250);
+  --primary: oklch(0.42 0.08 205);
+  --primary-foreground: oklch(0.985 0.005 200);
+  --secondary: oklch(0.945 0.006 240);
+  --secondary-foreground: oklch(0.3 0.02 250);
+  --muted: oklch(0.95 0.005 240);
+  --muted-foreground: oklch(0.52 0.02 250);
+  --accent: oklch(0.93 0.02 205);
+  --accent-foreground: oklch(0.3 0.06 205);
+  --destructive: oklch(0.55 0.2 27);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.905 0.006 240);
+  --input: oklch(0.885 0.008 240);
+  --ring: oklch(0.55 0.08 205);
+  --chart-1: oklch(0.42 0.08 205);
+  --chart-2: oklch(0.65 0.13 160);
+  --chart-3: oklch(0.78 0.14 80);
+  --chart-4: oklch(0.66 0.17 45);
+  --chart-5: oklch(0.55 0.2 27);
+  --sidebar: oklch(0.2 0.02 250);
+  --sidebar-foreground: oklch(0.8 0.01 240);
+  --sidebar-primary: oklch(0.7 0.1 195);
+  --sidebar-primary-foreground: oklch(0.15 0.02 250);
+  --sidebar-accent: oklch(0.27 0.02 250);
+  --sidebar-accent-foreground: oklch(0.97 0.005 240);
+  --sidebar-border: oklch(0.3 0.02 250);
+  --sidebar-ring: oklch(0.7 0.1 195);
+
+  --rhi-good: oklch(0.62 0.15 155);
+  --rhi-fair: oklch(0.8 0.15 85);
+  --rhi-poor: oklch(0.68 0.17 45);
+  --rhi-critical: oklch(0.55 0.21 27);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-feature-settings: "tnum" 1, "cv05" 1;
+  }
+}
+
+/* Leaflet integration */
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: oklch(0.94 0.006 240);
+}
+.leaflet-container .leaflet-control-zoom a {
+  color: var(--color-foreground);
+  border-color: var(--color-border);
+}
+.leaflet-container .leaflet-control-attribution {
+  font-size: 10px;
+  background: oklch(1 0 0 / 0.7);
+  color: var(--color-muted-foreground);
+}
+.leaflet-tooltip.rs-tooltip {
+  background: var(--color-popover);
+  color: var(--color-popover-foreground);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-panel);
+  font-size: 12px;
+  padding: 6px 8px;
+}
+.leaflet-tooltip.rs-tooltip::before {
+  display: none;
+}
+
+@utility panel {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+@utility label-caps {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+  font-weight: 500;
+}
