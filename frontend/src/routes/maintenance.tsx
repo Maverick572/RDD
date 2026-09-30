@@ -101,7 +101,7 @@ function MaintenancePage() {
   return (
     <AppShell
       areaFilter={areaFilter}
-      title="Predictive Maintenance & Work Orders"
+      title="Maintenance"
       subtitle="AI-prioritized pavement resurfacing, crack sealing & pothole patching operations"
       actions={
         <button
@@ -172,11 +172,10 @@ function MaintenancePage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-                    activeTab === tab.id
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${activeTab === tab.id
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
                 >
                   <span>{tab.label}</span>
                   <span className="rounded-full bg-background/20 px-1.5 py-0.2 text-[10px]">
@@ -288,15 +287,14 @@ function MaintenancePage() {
 
                         <td className="px-4 py-3">
                           <span
-                            className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                              task.status === "in_progress"
-                                ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                : task.status === "completed"
-                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                  : task.status === "scheduled"
-                                    ? "bg-purple-50 text-purple-700 border border-purple-200"
-                                    : "bg-amber-50 text-amber-700 border border-amber-200"
-                            }`}
+                            className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${task.status === "in_progress"
+                              ? "bg-blue-50 text-blue-700 border border-blue-200"
+                              : task.status === "completed"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : task.status === "scheduled"
+                                  ? "bg-purple-50 text-purple-700 border border-purple-200"
+                                  : "bg-amber-50 text-amber-700 border border-amber-200"
+                              }`}
                           >
                             {task.status.replace("_", " ")}
                           </span>

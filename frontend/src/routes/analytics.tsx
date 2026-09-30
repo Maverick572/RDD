@@ -90,7 +90,7 @@ function AnalyticsPage() {
   return (
     <AppShell
       areaFilter={areaFilter}
-      title="Infrastructure Intelligence & Predictive Analytics"
+      title="Analytics"
       subtitle="Statistical modeling of pavement health, distress epidemiology & multi-region comparisons"
       actions={
         <button

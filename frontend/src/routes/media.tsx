@@ -1,56 +1,170 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
-  AlertTriangle,
-  ArrowRight,
   CheckCircle2,
-  Clock,
   Cpu,
-  FileVideo,
-  HardDrive,
-  ImageIcon,
-  Layers,
-  Percent,
   Play,
-  RotateCw,
   Sparkles,
   UploadCloud,
-  Video,
-  X,
+  MapPin,
+  Compass,
+  Activity,
+  Loader2,
+  Navigation,
+  AlertTriangle,
+  AlertCircle,
+  Eye,
+  ArrowRight,
+  ShieldCheck,
+  FileCheck2,
+  RefreshCw,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { DEFECT_LABEL, formatDate, rhiBand, RHI_HEX, SEVERITY_LABEL } from "@/lib/rhi";
-import { mediaService } from "@/services/media.service";
 import { roadsService } from "@/services/roads.service";
-import type { AnalysisResult, MediaItem, Road } from "@/types";
-import imgPothole from "@/assets/inspection-pothole.jpg";
-import imgCracks from "@/assets/inspection-cracks.jpg";
-import imgMarkings from "@/assets/inspection-markings.jpg";
-import imgGood from "@/assets/inspection-good.jpg";
+import type { Road } from "@/types";
+import {
+  MapContainer,
+  TileLayer,
+  GeoJSON,
+  useMapEvents,
+} from "react-leaflet";
+
+import "leaflet/dist/leaflet.css";
 
 export const Route = createFileRoute("/media")({
   component: MediaAnalysisPage,
 });
 
+interface NearestRoadInfo {
+  id: number;
+  name: string;
+  type: string;
+  rhi: number | null;
+  geometry: any;
+  distance?: number;
+}
+
+interface DetectedDefectItem {
+  id: number;
+  type: string;
+  confidence: number;
+  severity: "high" | "medium" | "low" | string;
+}
+
+interface DetectionSuccessData {
+  filename: string;
+  location: {
+    latitude: number;
+    longitude: number;
+  };
+  road: {
+    id: number;
+    name: string;
+    type: string;
+    rhi: number | null;
+    geometry?: any;
+  };
+  defects: DetectedDefectItem[];
+  annotated_image: string;
+}
+
+function getDefectDisplayName(typeStr: string): string {
+  const map: Record<string, string> = {
+    D00: "Longitudinal Crack",
+    D10: "Transverse Crack",
+    D20: "Alligator Crack",
+    D40: "Pothole",
+    D43: "Crosswalk Blur",
+    D44: "Pothole / Surface Distress",
+    pothole: "Pothole",
+    crack: "Crack",
+    faded_marking: "Faded Marking",
+    rutting: "Rutting",
+    edge_break: "Edge Break",
+  };
+  return map[typeStr] || typeStr;
+}
+
+function CenterTracker({
+  onChange,
+}: {
+  onChange: (location: { latitude: number; longitude: number }) => void;
+}) {
+  useMapEvents({
+    moveend(e) {
+      const center = e.target.getCenter();
+      onChange({
+        latitude: center.lat,
+        longitude: center.lng,
+      });
+    },
+  });
+
+  return null;
+}
+
 function MediaAnalysisPage() {
   const [roads, setRoads] = useState<Road[]>([]);
-  const [mediaList, setMediaList] = useState<MediaItem[]>([]);
-  const [selectedRoadId, setSelectedRoadId] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [activeAnalysis, setActiveAnalysis] = useState<AnalysisResult | null>(null);
-  const [processingProgress, setProcessingProgress] = useState<number>(0);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [location, setLocation] = useState({
+    latitude: 19.0330,
+    longitude: 73.0297,
+  });
+
+  const [nearestRoad, setNearestRoad] = useState<NearestRoadInfo | null>(null);
+  const [roadDistance, setRoadDistance] = useState<number | null>(null);
+  const [isFetchingRoad, setIsFetchingRoad] = useState<boolean>(false);
+  const fetchTimeoutRef = useRef<number | null>(null);
+
+  // Detection API submission states
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState(0);
+  const [detectionResult, setDetectionResult] = useState<DetectionSuccessData | null>(null);
+  const [detectionError, setDetectionError] = useState<string | null>(null);
+  const resultsRef = useRef<HTMLDivElement | null>(null);
+
+  const fetchNearestRoad = useCallback(async (lat: number, lng: number) => {
+    setIsFetchingRoad(true);
+    try {
+      const response = await fetch(
+        `http://localhost:8000/roads/nearest?lat=${lat}&lng=${lng}&threshold=100`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setNearestRoad(data.road || null);
+        setRoadDistance(data.distance ?? (data.road?.distance ?? null));
+      } else {
+        setNearestRoad(null);
+        setRoadDistance(null);
+      }
+    } catch (err) {
+      console.warn("Could not fetch nearest road from backend:", err);
+      setNearestRoad(null);
+      setRoadDistance(null);
+    } finally {
+      setIsFetchingRoad(false);
+    }
+  }, []);
 
   useEffect(() => {
     roadsService.getRoads().then((r) => {
       setRoads(r);
-      if (r.length > 0) setSelectedRoadId(r[0].id);
     });
-    mediaService.getMediaItems().then(setMediaList);
-    mediaService.getAnalysisResult("AN-0031").then(setActiveAnalysis);
-  }, []);
+    // Initial road match on load
+    fetchNearestRoad(location.latitude, location.longitude);
+  }, [fetchNearestRoad]);
+
+  const handleLocationChange = (newLoc: { latitude: number; longitude: number }) => {
+    setLocation(newLoc);
+    if (fetchTimeoutRef.current) {
+      window.clearTimeout(fetchTimeoutRef.current);
+    }
+    fetchTimeoutRef.current = window.setTimeout(() => {
+      fetchNearestRoad(newLoc.latitude, newLoc.longitude);
+    }, 200);
+  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -68,107 +182,96 @@ function MediaAnalysisPage() {
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       setSelectedFile(e.dataTransfer.files[0]);
+      setDetectionResult(null);
+      setDetectionError(null);
     }
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
+      setDetectionResult(null);
+      setDetectionError(null);
     }
   };
 
-  const handleUploadAndRun = async () => {
-    if (!selectedFile) return;
-    setIsUploading(true);
-    setIsProcessing(true);
-    setProcessingProgress(15);
+  // Submit is enabled ONLY when there is an image AND a valid nearest road
+  const canSubmit = Boolean(selectedFile && nearestRoad && !isSubmitting);
+
+  const handleSubmitDetect = async () => {
+    if (!selectedFile || !nearestRoad || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setSubmitProgress(20);
+    setDetectionResult(null);
+    setDetectionError(null);
+
+    // Progress animation interval
+    const interval = setInterval(() => {
+      setSubmitProgress((prev) => (prev < 90 ? prev + 15 : prev));
+    }, 300);
 
     try {
-      const isVideo = selectedFile.type.includes("video") || selectedFile.name.endsWith(".mp4");
-      const sizeMb = Math.round((selectedFile.size / (1024 * 1024)) * 10) / 10 || 45.2;
+      const formData = new FormData();
+      formData.append("file", selectedFile);
 
-      // Simulate upload
-      const uploadedMedia = await mediaService.uploadMedia({
-        fileName: selectedFile.name,
-        sizeMb,
-        kind: isVideo ? "video" : "image",
-        roadId: selectedRoadId || null,
+      const url = `http://localhost:8000/detect?lat=${location.latitude}&lng=${location.longitude}`;
+      const response = await fetch(url, {
+        method: "POST",
+        body: formData,
       });
 
-      setMediaList(await mediaService.getMediaItems());
-      setIsUploading(false);
+      clearInterval(interval);
+      setSubmitProgress(100);
 
-      // Simulate step-by-step progress
-      for (let p = 25; p <= 90; p += 20) {
-        setProcessingProgress(p);
-        await new Promise((r) => setTimeout(r, 450));
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        setDetectionError(data.error || `Server error (${response.status})`);
+        setDetectionResult(null);
+      } else {
+        setDetectionResult(data);
+        setDetectionError(null);
       }
 
-      const result = await mediaService.runAnalysis(uploadedMedia.id);
-      setProcessingProgress(100);
-      setActiveAnalysis(result);
-      setMediaList(await mediaService.getMediaItems());
-      setSelectedFile(null);
+      // Scroll to results container smoothly
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    } catch (err: any) {
+      clearInterval(interval);
+      setDetectionError(
+        err.message || "Failed to reach backend server at http://localhost:8000"
+      );
+      setDetectionResult(null);
     } finally {
-      setIsProcessing(false);
+      setIsSubmitting(false);
     }
   };
-
-  const handleViewAnalysis = async (mediaId: string) => {
-    const result = await mediaService.getAnalysisResult(mediaId);
-    if (result) {
-      setActiveAnalysis(result);
-    } else {
-      // Run on demand if not yet analysed
-      setIsProcessing(true);
-      setProcessingProgress(40);
-      const res = await mediaService.runAnalysis(mediaId);
-      setProcessingProgress(100);
-      setActiveAnalysis(res);
-      setMediaList(await mediaService.getMediaItems());
-      setIsProcessing(false);
-    }
-  };
-
-  const roadMap = new Map(roads.map((r) => [r.id, r]));
 
   return (
     <AppShell
-      title="Computer Vision & AI Inference Engine"
-      subtitle="Automated pavement distress segmentation via YOLOv8m-RDD model with bounding box localisation"
+      title="Media Processing"
+      subtitle="Upload road distress images with GPS coordinates to log defects and inspect neural detections"
     >
-      <div className="space-y-5 p-4 lg:p-6">
-        {/* Upload & Inference Trigger Panel */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Upload Dropzone (2 cols) */}
-          <div className="panel p-5 lg:col-span-2 flex flex-col justify-between">
-            <div>
+      <div className="space-y-6 p-4 lg:p-6">
+        {/* Upload & Location Selection Panels */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Upload Dropzone */}
+          <div className="panel p-5 flex flex-col min-h-[420px] justify-between">
+            <div className="flex flex-col flex-1">
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <div className="flex items-center gap-2">
                   <Cpu className="h-4 w-4 text-primary" />
                   <h2 className="text-sm font-semibold text-foreground">
-                    Upload Dashcam / High-Res Road Footage for AI Inference
+                    Upload Road Image
                   </h2>
                 </div>
-                <span className="rounded bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                  YOLOv8m-RDD v2.3
-                </span>
-              </div>
-
-              {/* Target Corridor selection */}
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <label className="label-caps">Associate with Corridor:</label>
-                <select
-                  value={selectedRoadId}
-                  onChange={(e) => setSelectedRoadId(e.target.value)}
-                  className="rounded-md border border-input bg-background px-3 py-1.5 text-xs font-semibold text-foreground focus:ring-1 focus:ring-primary cursor-pointer w-72"
-                >
-                  {roads.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.code} - {r.name} (RHI: {r.rhi})
-                    </option>
-                  ))}
-                </select>
+                {selectedFile && (
+                  <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Image Ready
+                  </span>
+                )}
               </div>
 
               {/* Dropzone */}
@@ -177,18 +280,17 @@ function MediaAnalysisPage() {
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
-                className={`mt-4 flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-all ${
-                  dragActive
-                    ? "border-primary bg-primary/5"
-                    : selectedFile
-                      ? "border-emerald-500 bg-emerald-500/5"
-                      : "border-border hover:border-primary/50 bg-background/50"
-                }`}
+                className={`mt-4 flex flex-1 items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-all ${dragActive
+                  ? "border-primary bg-primary/5"
+                  : selectedFile
+                    ? "border-emerald-500 bg-emerald-500/5"
+                    : "border-border hover:border-primary/50 bg-background/50"
+                  }`}
               >
                 <input
                   type="file"
                   id="media-file-input"
-                  accept="video/mp4,video/avi,image/jpeg,image/png"
+                  accept="image/jpeg,image/png,image/webp,image/jpg"
                   onChange={handleFileInput}
                   className="hidden"
                 />
@@ -198,15 +300,19 @@ function MediaAnalysisPage() {
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-600 mx-auto">
                       <CheckCircle2 className="h-6 w-6" />
                     </div>
-                    <div className="font-semibold text-sm text-foreground">
+                    <div className="font-semibold text-sm text-foreground max-w-[280px] truncate mx-auto">
                       {selectedFile.name}
                     </div>
                     <div className="text-xs text-muted-foreground font-mono">
-                      {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB • Ready for neural inference
+                      {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready for AI detection
                     </div>
                     <button
-                      onClick={() => setSelectedFile(null)}
-                      className="text-xs text-rose-600 hover:underline font-medium"
+                      onClick={() => {
+                        setSelectedFile(null);
+                        setDetectionResult(null);
+                        setDetectionError(null);
+                      }}
+                      className="text-xs text-rose-600 hover:underline font-medium cursor-pointer"
                     >
                       Choose another file
                     </button>
@@ -221,325 +327,432 @@ function MediaAnalysisPage() {
                     </div>
                     <div>
                       <span className="font-semibold text-primary hover:underline text-sm">
-                        Click to upload footage
+                        Click to upload road photo
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {" "}or drag & drop here
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Supports MP4, AVI, JPG, PNG from dashcams, LiDAR or drone sweeps (Max 500MB)
+                      Supports JPG, PNG, WEBP
                     </p>
                   </label>
                 )}
               </div>
             </div>
 
-            {/* Inference Progress or Trigger Button */}
+            {/* Inference Progress & Trigger Button */}
             <div className="mt-4 pt-3 border-t border-border">
-              {isProcessing ? (
+              {isSubmitting ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-foreground flex items-center gap-1.5">
                       <Sparkles className="h-3.5 w-3.5 text-primary animate-spin" />
-                      Running Neural Distress Extraction...
+                      Running Defect Extraction...
                     </span>
                     <span className="font-mono text-primary font-bold">
-                      {processingProgress}%
+                      {submitProgress}%
                     </span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                     <div
                       className="h-full bg-primary transition-all duration-300 rounded-full"
-                      style={{ width: `${processingProgress}%` }}
+                      style={{ width: `${submitProgress}%` }}
                     />
                   </div>
-                  <p className="text-[11px] text-muted-foreground font-mono">
-                    Model: YOLOv8m-RDD • Generating bounding boxes & RHI impact estimations...
-                  </p>
                 </div>
               ) : (
-                <button
-                  disabled={!selectedFile || isProcessing}
-                  onClick={handleUploadAndRun}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 disabled:opacity-50 transition-colors cursor-pointer"
-                >
-                  <Play className="h-4 w-4" />
-                  <span>Execute Neural Analysis & Distress Extraction</span>
-                </button>
+                <div className="space-y-2">
+                  <button
+                    disabled={!canSubmit}
+                    onClick={handleSubmitDetect}
+                    className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    <Play className="h-4 w-4" />
+                    <span>Run Defect Detection & Submit</span>
+                  </button>
+
+                  {!canSubmit && (
+                    <p className="text-[11px] text-center text-muted-foreground">
+                      {!selectedFile && !nearestRoad
+                        ? "Please upload an image and position map center over a road"
+                        : !selectedFile
+                          ? "Please upload a road distress image to enable submit"
+                          : "Move map center closer to a valid road (< 100m) to enable submit"}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>
 
-          {/* Model Specification Card (1 col) */}
-          <div className="panel p-4 flex flex-col justify-between">
+          {/* Location & Nearest Road Matcher */}
+          <div className="panel p-5 flex flex-col justify-between min-h-[420px]">
             <div>
-              <div className="flex items-center gap-2 border-b border-border pb-2.5">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">
-                  Model Specifications
-                </h3>
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  <h2 className="text-sm font-semibold text-foreground">
+                    Location & Nearest Road Segment
+                  </h2>
+                </div>
+                {isFetchingRoad ? (
+                  <span className="flex items-center gap-1 text-[11px] text-primary font-mono animate-pulse">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Matching road...
+                  </span>
+                ) : nearestRoad ? (
+                  <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">
+                    Road Matched
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-[10px] font-semibold text-amber-600">
+                    Outside Threshold
+                  </span>
+                )}
               </div>
 
-              <div className="mt-3 space-y-2.5 text-xs">
-                <div className="flex items-center justify-between rounded bg-muted/40 p-2 border border-border/50">
-                  <span className="text-muted-foreground">Architecture</span>
-                  <span className="font-mono font-bold text-foreground">
-                    YOLOv8m-RDD
-                  </span>
-                </div>
+              {/* Map Container */}
+              <div className="relative mt-4 h-[240px] overflow-hidden rounded-xl border border-border">
+                <MapContainer
+                  center={[location.latitude, location.longitude]}
+                  zoom={15}
+                  className="h-full w-full"
+                >
+                  <TileLayer
+                    attribution="&copy; OpenStreetMap contributors"
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
 
-                <div className="flex items-center justify-between rounded bg-muted/40 p-2 border border-border/50">
-                  <span className="text-muted-foreground">Classes Detected</span>
-                  <span className="font-medium text-foreground">
-                    Potholes, Cracks, Markings, Rutting
-                  </span>
-                </div>
+                  {nearestRoad?.geometry && (
+                    <GeoJSON
+                      key={`road-${nearestRoad.id}`}
+                      data={nearestRoad.geometry}
+                      style={{
+                        color: "#0284c7",
+                        weight: 6,
+                        opacity: 0.95,
+                        lineCap: "round",
+                        lineJoin: "round",
+                      }}
+                    />
+                  )}
 
-                <div className="flex items-center justify-between rounded bg-muted/40 p-2 border border-border/50">
-                  <span className="text-muted-foreground">Validation mAP@50</span>
-                  <span className="font-mono font-bold text-emerald-600">
-                    89.4%
-                  </span>
-                </div>
+                  <CenterTracker onChange={handleLocationChange} />
+                </MapContainer>
 
-                <div className="flex items-center justify-between rounded bg-muted/40 p-2 border border-border/50">
-                  <span className="text-muted-foreground">Inference Speed</span>
-                  <span className="font-mono font-medium text-foreground">
-                    18.2 ms / frame
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between rounded bg-muted/40 p-2 border border-border/50">
-                  <span className="text-muted-foreground">Backend Target</span>
-                  <span className="font-mono text-[11px] text-primary">
-                    POST /analysis/run
-                  </span>
+                {/* Fixed center pin marker */}
+                <div className="pointer-events-none absolute inset-0 z-[1000] flex items-center justify-center">
+                  <div className="relative flex items-center justify-center">
+                    <div className="absolute h-6 w-6 rounded-full bg-primary/30 animate-ping" />
+                    <div className="h-4 w-4 rounded-full border-2 border-white bg-primary shadow-lg" />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-border text-[11px] text-muted-foreground">
-              Processed media seamlessly updates RHI degradation curves and issues auto work recommendations.
+            {/* Road Information & Coordinates Panel */}
+            <div className="mt-4 space-y-2.5">
+              {/* Matched Road Card */}
+              {nearestRoad ? (
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                        <Navigation className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-foreground">
+                          {nearestRoad.name || "Unnamed Road Segment"}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground font-mono">
+                          ID: #{nearestRoad.id} • {roadDistance !== null ? `${roadDistance}m away` : "Matched"}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="rounded bg-primary/15 px-2 py-0.5 text-[10px] font-mono font-semibold uppercase text-primary border border-primary/30 shrink-0">
+                      {nearestRoad.type}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-primary/10 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-muted-foreground">Type:</span>
+                      <span className="font-semibold text-foreground capitalize">
+                        {nearestRoad.type}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <span className="text-[11px] text-muted-foreground">RHI:</span>
+                      {nearestRoad.rhi !== null ? (
+                        <span
+                          className="font-mono font-bold text-xs"
+                          style={{
+                            color: RHI_HEX[rhiBand(nearestRoad.rhi)],
+                          }}
+                        >
+                          {nearestRoad.rhi} / 100
+                        </span>
+                      ) : (
+                        <span className="font-mono text-xs text-muted-foreground italic">
+                          null
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border bg-muted/20 p-2.5 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    {roadDistance !== null
+                      ? `Nearest road is ${roadDistance}m away (exceeds 100m threshold).`
+                      : "Pan/scroll the map to align center marker near a road."}
+                  </p>
+                </div>
+              )}
+
+              {/* Coordinates strip */}
+              <div className="flex items-center justify-between rounded-lg border border-border bg-muted/40 px-3 py-1.5 font-mono text-[11px]">
+                <div>
+                  <span className="text-muted-foreground">LAT:</span>{" "}
+                  <span className="text-foreground font-semibold">
+                    {location.latitude.toFixed(6)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">LNG:</span>{" "}
+                  <span className="text-foreground font-semibold">
+                    {location.longitude.toFixed(6)}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* AI Inference Output & Bounding Box Inspection Frame */}
-        {activeAnalysis && (
-          <div className="panel p-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-bold text-foreground bg-muted px-2 py-0.5 rounded">
-                    {activeAnalysis.id}
-                  </span>
-                  <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-500/30">
-                    Inference Complete
-                  </span>
+        {/* ========================================================================= */}
+        {/* Results Container (Error OR Success) */}
+        {/* ========================================================================= */}
+        <div ref={resultsRef}>
+          {/* 1. Error Banner Container */}
+          {detectionError && (
+            <div className="panel p-6 border-rose-500/30 bg-rose-500/5 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/20 text-rose-600">
+                  <AlertTriangle className="h-5 w-5" />
                 </div>
-                <h3 className="mt-1 text-sm font-bold text-foreground">
-                  Distress Detections ({activeAnalysis.detections.length} objects identified)
-                </h3>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-rose-500/15 px-2 py-0.5 text-xs font-mono font-bold uppercase text-rose-700">
+                      Detection Result
+                    </span>
+                    <h3 className="text-base font-bold text-foreground">
+                      {detectionError === "Defects not found"
+                        ? "No Road Defects Found"
+                        : detectionError === "Location not found"
+                          ? "Road Location Not Matched"
+                          : "Inference Error"}
+                    </h3>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    {detectionError === "Defects not found"
+                      ? "The AI model analyzed your uploaded image and found no detectable surface distress (potholes, cracks, rutting) above the confidence threshold. The pavement appears to be in good condition or distress was not clear."
+                      : detectionError === "Location not found"
+                        ? "The coordinates provided could not be matched to any registered road corridor in the database. Please scroll the map closer to a road segment and try again."
+                        : `Backend error: ${detectionError}`}
+                  </p>
+                </div>
               </div>
 
-              {activeAnalysis.estimatedRhi !== null && (
-                <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-1.5 border border-border">
-                  <span className="text-xs text-muted-foreground font-medium">
-                    Calculated Corridor Health:
-                  </span>
-                  <span
-                    className="font-mono text-sm font-bold"
-                    style={{
-                      color: RHI_HEX[rhiBand(activeAnalysis.estimatedRhi)],
-                    }}
-                  >
-                    RHI {activeAnalysis.estimatedRhi} / 100
-                  </span>
-                </div>
-              )}
+              <div className="pt-2 border-t border-rose-500/15 flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-mono text-[11px]">
+                  Status: 0 defects inserted to DB
+                </span>
+                <button
+                  onClick={() => setDetectionError(null)}
+                  className="text-xs font-semibold text-rose-600 hover:underline cursor-pointer"
+                >
+                  Dismiss Notice
+                </button>
+              </div>
             </div>
+          )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* Frame Viewer with Bounding Boxes */}
-              <div className="relative overflow-hidden rounded-xl border border-border bg-black aspect-16/9 flex items-center justify-center">
-                <img
-                  src={imgPothole}
-                  alt="Inference Frame"
-                  className="h-full w-full object-cover"
-                />
+          {/* 2. Success Result Container */}
+          {detectionResult && (
+            <div className="panel p-5 lg:p-6 space-y-5 border-emerald-500/30">
+              {/* Header Banner */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Complaint Registered
+                    </span>
+                  </div>
+                  <h3 className="text-base font-bold text-foreground">
+                    {detectionResult.defects.length} Defect(s) Identified on {detectionResult.road.name || "Corridor"}
+                  </h3>
+                </div>
 
-                {/* Render bounding boxes */}
-                {activeAnalysis.detections.map((det, idx) => {
-                  const [x, y, w, h] = det.bbox;
-                  const isHigh = det.severity === "high";
-                  const boxColor = isHigh ? "#e11d48" : "#f59e0b";
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-muted/40 px-3 py-1.5 border border-border text-right">
+                    <div className="text-[10px] text-muted-foreground uppercase font-semibold">
+                      Corridor ID
+                    </div>
+                    <div className="font-mono text-xs font-bold text-foreground">
+                      #{detectionResult.road.id} ({detectionResult.road.type})
+                    </div>
+                  </div>
 
-                  return (
-                    <div
-                      key={idx}
-                      className="absolute border-2 rounded shadow-md transition-all duration-200 hover:scale-105"
-                      style={{
-                        top: `${y}%`,
-                        left: `${x}%`,
-                        width: `${w}%`,
-                        height: `${h}%`,
-                        borderColor: boxColor,
-                        backgroundColor: `${boxColor}22`,
-                      }}
-                    >
-                      <div
-                        className="absolute -top-5 left-0 rounded px-1.5 py-0.5 text-[9px] font-bold text-white uppercase shadow-xs flex items-center gap-1"
-                        style={{ backgroundColor: boxColor }}
+                  <div className="rounded-lg bg-muted/40 px-3 py-1.5 border border-border text-right">
+                    <div className="text-[10px] text-muted-foreground uppercase font-semibold">
+                      Road RHI
+                    </div>
+                    <div className="font-mono text-xs font-bold">
+                      {detectionResult.road.rhi !== null ? (
+                        <span style={{ color: RHI_HEX[rhiBand(detectionResult.road.rhi)] }}>
+                          {detectionResult.road.rhi} / 100
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground italic">null</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Two Column Layout: Annotated Image + Defects Breakdown */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left: Annotated Image Frame */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="label-caps flex items-center gap-1.5">
+                      <Eye className="h-3.5 w-3.5 text-primary" />
+                      Detected Defects
+                    </div>
+                    {detectionResult.annotated_image && (
+                      <a
+                        href={detectionResult.annotated_image}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[11px] text-primary hover:underline font-semibold flex items-center gap-1"
                       >
-                        <span>{DEFECT_LABEL[det.type] || det.type}</span>
-                        <span>({Math.round(det.confidence * 100)}%)</span>
+                        Open Full Image ↗
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="relative overflow-hidden rounded-xl border border-border bg-black min-h-[260px] aspect-16/9 flex items-center justify-center group shadow-md">
+                    <img
+                      src={detectionResult.annotated_image}
+                      alt="Annotated Defect Result"
+                      className="h-full w-full object-contain"
+                      loading="eager"
+                      onError={(e) => {
+                        console.warn("Failed loading annotated image URL:", detectionResult.annotated_image);
+                        const target = e.target as HTMLImageElement;
+                        const filename = detectionResult.annotated_image.split("/").pop() || "";
+                        if (!target.src.includes("localhost:8000/outputs")) {
+                          target.src = `http://localhost:8000/outputs/${filename.replace(/^[a-f0-9]+_/, "")}`;
+                        }
+                      }}
+                    />
+
+                    {/* Defect count overlay */}
+                    <div className="absolute bottom-2 left-2 rounded-md bg-black/75 backdrop-blur-xs px-2.5 py-1 text-[11px] font-mono text-white flex items-center gap-1.5 border border-white/10">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>{detectionResult.defects.length} Bounding Box Detections</span>
+                    </div>
+                  </div>
+
+                  {/* Coordinates pill */}
+                  <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs font-mono">
+                    <span className="text-muted-foreground">GPS Location:</span>
+                    <span className="text-foreground font-semibold">
+                      {detectionResult.location.latitude.toFixed(6)}, {detectionResult.location.longitude.toFixed(6)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right: Detected Defects List & Database Entries */}
+                <div className="space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-1">
+                      <div className="label-caps flex items-center gap-1.5">
+                        <FileCheck2 className="h-3.5 w-3.5 text-primary" />
+                        Logged Defect Registry Entries
                       </div>
                     </div>
-                  );
-                })}
-              </div>
 
-              {/* Detections Breakdown Table */}
-              <div className="space-y-3">
-                <div className="label-caps">Neural Detection Log</div>
-                <div className="overflow-x-auto rounded-lg border border-border">
-                  <table className="w-full text-left text-xs">
-                    <thead className="border-b border-border bg-muted/50 text-[10px] font-semibold text-muted-foreground uppercase">
-                      <tr>
-                        <th className="px-3 py-2">Class</th>
-                        <th className="px-3 py-2">Severity</th>
-                        <th className="px-3 py-2">Confidence</th>
-                        <th className="px-3 py-2">Bounding Box [x,y,w,h]</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/60">
-                      {activeAnalysis.detections.map((det, i) => (
-                        <tr key={i} className="hover:bg-muted/30">
-                          <td className="px-3 py-2 font-medium text-foreground">
-                            {DEFECT_LABEL[det.type] || det.type}
-                          </td>
-                          <td className="px-3 py-2">
-                            <span
-                              className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                                det.severity === "high"
-                                  ? "bg-rose-50 text-rose-700"
-                                  : "bg-amber-50 text-amber-700"
-                              }`}
-                            >
-                              {det.severity}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 font-mono font-bold text-foreground">
-                            {Math.round(det.confidence * 100)}%
-                          </td>
-                          <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground">
-                            [{det.bbox.join(", ")}]%
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    <div className="mt-2 overflow-x-auto rounded-lg border border-border">
+                      <table className="w-full text-left text-xs">
+                        <thead className="border-b border-border bg-muted/50 text-[10px] font-semibold text-muted-foreground uppercase">
+                          <tr>
+                            <th className="px-3 py-2.5">Defect ID</th>
+                            <th className="px-3 py-2.5">Distress Type</th>
+                            <th className="px-3 py-2.5">Severity</th>
+                            <th className="px-3 py-2.5 text-right">Confidence</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/60">
+                          {detectionResult.defects.map((defect) => {
+                            const isHigh = defect.severity === "high";
+                            const isMed = defect.severity === "medium";
 
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-[11px] text-muted-foreground">
-                    Model: {activeAnalysis.model}
-                  </span>
-                  <Link
-                    to="/maintenance"
-                    className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                  >
-                    Schedule Repair for Detected Distress →
-                  </Link>
+                            return (
+                              <tr key={defect.id} className="hover:bg-muted/30 transition-colors">
+                                <td className="px-3 py-2.5 font-mono font-bold text-foreground">
+                                  #{defect.id}
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <div className="font-semibold text-foreground">
+                                    {getDefectDisplayName(defect.type)}
+                                  </div>
+                                  <div className="text-[10px] text-muted-foreground font-mono">
+                                    Code: {defect.type}
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <span
+                                    className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${isHigh
+                                      ? "bg-rose-500/15 text-rose-700 border border-rose-500/30"
+                                      : isMed
+                                        ? "bg-amber-500/15 text-amber-700 border border-amber-500/30"
+                                        : "bg-sky-500/15 text-sky-700 border border-sky-500/30"
+                                      }`}
+                                  >
+                                    {defect.severity}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2.5 text-right font-mono font-bold text-foreground">
+                                  {Math.round(defect.confidence * 100)}%
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Navigation Links */}
+                  <div className="pt-4 border-t border-border flex flex-wrap items-center justify-between gap-3">
+                    <Link
+                      to="/defects"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                    >
+                      <ShieldCheck className="h-4 w-4" />
+                      View in Global Defects Registry →
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Media History Log */}
-        <div className="panel p-4">
-          <div className="flex items-center justify-between border-b border-border pb-3">
-            <div className="flex items-center gap-2">
-              <HardDrive className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">
-                Footage Registry & Inference History
-              </h3>
-            </div>
-            <span className="text-xs text-muted-foreground font-mono">
-              {mediaList.length} files
-            </span>
-          </div>
-
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border bg-muted/40 text-[11px] font-semibold text-muted-foreground uppercase">
-                <tr>
-                  <th className="px-3 py-2">Media File</th>
-                  <th className="px-3 py-2">Format</th>
-                  <th className="px-3 py-2">Size</th>
-                  <th className="px-3 py-2">Corridor</th>
-                  <th className="px-3 py-2">Uploaded</th>
-                  <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2 text-right">Inference</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {mediaList.map((m) => {
-                  const road = m.roadId ? roadMap.get(m.roadId) : undefined;
-                  return (
-                    <tr key={m.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-3 py-2.5 font-mono font-medium text-foreground">
-                        {m.fileName}
-                      </td>
-                      <td className="px-3 py-2.5 uppercase text-muted-foreground">
-                        {m.kind}
-                      </td>
-                      <td className="px-3 py-2.5 font-mono text-muted-foreground">
-                        {m.sizeMb} MB
-                      </td>
-                      <td className="px-3 py-2.5">
-                        {road ? (
-                          <span className="font-semibold text-foreground">
-                            {road.code} - {road.name}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 text-muted-foreground">
-                        {formatDate(m.uploadedAt)}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <span
-                          className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                            m.status === "analysed"
-                              ? "bg-emerald-50 text-emerald-700"
-                              : m.status === "processing"
-                                ? "bg-amber-50 text-amber-700"
-                                : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {m.status}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5 text-right">
-                        <button
-                          onClick={() => handleViewAnalysis(m.id)}
-                          className="rounded bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors cursor-pointer"
-                        >
-                          View BBoxes →
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          )}
         </div>
       </div>
     </AppShell>
   );
 }
+

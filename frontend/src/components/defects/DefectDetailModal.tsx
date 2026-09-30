@@ -146,7 +146,6 @@ export const DefectDetailModal: React.FC<DefectDetailModalProps> = ({
               <span>Geo-tag: [{defect.location[0].toFixed(4)}, {defect.location[1].toFixed(4)}]</span>
               <Link
                 to="/gallery"
-                search={{ roadId: defect.roadId }}
                 className="text-primary hover:underline flex items-center gap-1"
               >
                 Gallery <ExternalLink className="h-3 w-3" />

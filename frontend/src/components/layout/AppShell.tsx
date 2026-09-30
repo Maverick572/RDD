@@ -54,7 +54,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     { label: "Road Network", href: "/roads", icon: Route },
     { label: "Inspection Gallery", href: "/gallery", icon: Images },
     { label: "Defect Registry", href: "/defects", icon: AlertTriangle },
-    { label: "Media & AI Inference", href: "/media", icon: Cpu },
+    { label: "Media Processing", href: "/media", icon: Cpu },
     { label: "Maintenance", href: "/maintenance", icon: CalendarCheck },
     { label: "Analytics", href: "/analytics", icon: BarChart3 },
   ];
@@ -73,9 +73,8 @@ export const AppShell: React.FC<AppShellProps> = ({
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar border-r border-sidebar-border transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar border-r border-sidebar-border transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         {/* Brand header */}
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
@@ -86,13 +85,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             <div>
               <div className="flex items-center gap-1.5 font-bold tracking-tight text-sidebar-accent-foreground text-base">
                 <span>RoadSense</span>
-                <span className="rounded bg-sidebar-primary/20 px-1 py-0.2 text-[10px] font-semibold text-sidebar-primary">
-                  GIS AI
-                </span>
               </div>
-              <p className="text-[10px] text-sidebar-foreground/70 font-mono">
-                Smart Infra Manager
-              </p>
             </div>
           </Link>
           <button
@@ -105,9 +98,6 @@ export const AppShell: React.FC<AppShellProps> = ({
 
         {/* Navigation list */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          <div className="px-2 pb-2 text-[10px] font-semibold tracking-wider text-sidebar-foreground/50 uppercase">
-            Operations GIS
-          </div>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -120,44 +110,22 @@ export const AppShell: React.FC<AppShellProps> = ({
                 key={item.href}
                 to={item.href}
                 onClick={() => setSidebarOpen(false)}
-                className={`group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-xs"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                }`}
+                className={`group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${isActive
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-xs"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  }`}
               >
                 <Icon
-                  className={`h-4 w-4 shrink-0 transition-colors ${
-                    isActive
-                      ? "text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground/70 group-hover:text-sidebar-accent-foreground"
-                  }`}
+                  className={`h-4 w-4 shrink-0 transition-colors ${isActive
+                    ? "text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground/70 group-hover:text-sidebar-accent-foreground"
+                    }`}
                 />
                 <span className="truncate">{item.label}</span>
               </Link>
             );
           })}
         </nav>
-
-        {/* Sidebar Footer / System Badge */}
-        <div className="border-t border-sidebar-border p-3">
-          <div className="rounded-lg bg-sidebar-accent/50 p-2.5 border border-sidebar-border/60">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
-              </span>
-              <span className="text-xs font-medium text-sidebar-accent-foreground">
-                Inference Node Active
-              </span>
-            </div>
-            <p className="mt-1 text-[11px] text-sidebar-foreground/60 leading-tight">
-              YOLOv8m-RDD Model v2.3
-              <br />
-              26 Corridors Monitored
-            </p>
-          </div>
-        </div>
       </aside>
 
       {/* Main Container */}

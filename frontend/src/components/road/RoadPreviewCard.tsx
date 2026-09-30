@@ -147,7 +147,6 @@ export const RoadPreviewCard: React.FC<RoadPreviewCardProps> = ({
 
         <Link
           to="/gallery"
-          search={{ roadId: road.id }}
           className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
         >
           <Images className="h-3.5 w-3.5 text-primary" />

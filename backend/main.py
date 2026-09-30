@@ -1,15 +1,38 @@
-from fastapi import FastAPI, UploadFile, File
+import os
+from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from backend.storage import save_upload
-from backend.metadata import extract_gps
-from backend.inference import detect_road_damage
+from backend.detect import router as detect_router
+from backend.find_nearest import router as nearest_router
+from backend.ward_defects import router as ward_defects_router
+from backend.ward_roads import router as ward_roads_router
+from backend.dashboard import router as dashboard_router
 
+load_dotenv()
 
 app = FastAPI(
     title="Road Defect Detection API",
     description="API for road defect detection",
     version="1.0.0"
 )
+
+# Enable CORS for frontend communication
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Ensure outputs and uploads directories exist for static serving
+os.makedirs("outputs", exist_ok=True)
+os.makedirs("uploads", exist_ok=True)
+
+app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 @app.get("/")
@@ -26,18 +49,10 @@ def health_check():
     }
 
 
-@app.post("/detect")
-async def detect(file: UploadFile = File(...)):
+# Include modular routers
+app.include_router(detect_router)
+app.include_router(nearest_router)
+app.include_router(ward_defects_router)
+app.include_router(ward_roads_router)
+app.include_router(dashboard_router)
 
-    image_path = await save_upload(file)
-
-    location = extract_gps(image_path)
-
-    detection = detect_road_damage(image_path)
-
-    return {
-        "filename": file.filename,
-        "location": location,
-        "detections": detection["detections"],
-        "annotated_image": detection["image"]
-    }

@@ -1,721 +1,698 @@
-import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
-import React, { useEffect, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import {
   AlertTriangle,
-  ArrowLeft,
-  ArrowLeftRight,
-  Camera,
-  CheckCircle,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Eye,
-  Filter,
   Images,
-  LayoutGrid,
-  Layers,
+  Loader2,
   MapPin,
-  Maximize2,
-  Sparkles,
-  Sliders,
-  TrendingDown,
-  TrendingUp,
-  ZoomIn,
-  ZoomOut,
+  Navigation,
+  Shield,
+  Eye,
+  Camera,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
-import { useAreaFilter } from "@/hooks/useAreaFilter";
-import { formatDate, rhiBand, RHI_HEX } from "@/lib/rhi";
-import { roadsService } from "@/services/roads.service";
-import type { Inspection, Road, RoadImage } from "@/types";
+import {
+  MapContainer,
+  TileLayer,
+  GeoJSON,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 export const Route = createFileRoute("/gallery")({
-  validateSearch: (search: Record<string, unknown>) => {
-    return {
-      roadId: (search.roadId as string) || undefined,
-      tab: (search.tab as "grid" | "compare" | "inspector") || undefined,
-    };
-  },
-  component: ImageGalleryPage,
+  component: GalleryPage,
 });
 
-function ImageGalleryPage() {
-  const searchParams = useSearch({ from: "/gallery" });
-  const areaFilter = useAreaFilter();
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-  const [roads, setRoads] = useState<Road[]>([]);
-  const [selectedRoadId, setSelectedRoadId] = useState<string>(searchParams.roadId || "");
-  const [images, setImages] = useState<RoadImage[]>([]);
-  const [inspections, setInspections] = useState<Inspection[]>([]);
-  const [selectedInspectionId, setSelectedInspectionId] = useState<string>("all");
-  const [cameraFilter, setCameraFilter] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState<"grid" | "compare" | "inspector">(
-    searchParams.tab || "grid"
-  );
+interface Ward {
+  id: number;
+  ward_number: number;
+  node: string;
+  municipal_corporation: string;
+  defect_count: number;
+  geometry: GeoJSON.Geometry;
+}
 
-  // Inspector Tab State
-  const [activeInspectorImage, setActiveInspectorImage] = useState<RoadImage | null>(null);
-  const [showAiBoxes, setShowAiBoxes] = useState(true);
-  const [zoomLevel, setZoomLevel] = useState(1);
+interface WardDefect {
+  id: number;
+  road_id: number;
+  type: string;
+  confidence: number;
+  severity: string;
+  latitude: number;
+  longitude: number;
+  image_url: string | null;
+  timestamp: string | null;
+}
 
-  // Comparison Tab State
-  const [inspectionAId, setInspectionAId] = useState<string>("");
-  const [inspectionBId, setInspectionBId] = useState<string>("");
-  const [selectedChainageIdx, setSelectedChainageIdx] = useState<number>(0);
+interface NearestRoadInfo {
+  id: number;
+  name: string;
+  type: string;
+  rhi: number | null;
+  geometry: any;
+  distance?: number;
+}
 
-  const [loading, setLoading] = useState(true);
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-  // Load Roads
+const API_BASE = "http://localhost:8000";
+
+function getDefectDisplayName(typeStr: string): string {
+  const map: Record<string, string> = {
+    D00: "Longitudinal Crack",
+    D10: "Transverse Crack",
+    D20: "Alligator Crack",
+    D40: "Pothole",
+    D43: "Crosswalk Blur",
+    D44: "Surface Distress",
+    pothole: "Pothole",
+    crack: "Crack",
+    faded_marking: "Faded Marking",
+    rutting: "Rutting",
+    edge_break: "Edge Break",
+  };
+  return map[typeStr] || typeStr;
+}
+
+function severityColor(sev: string) {
+  switch (sev) {
+    case "high":
+      return {
+        bg: "bg-rose-500/15",
+        text: "text-rose-700",
+        border: "border-rose-500/30",
+      };
+    case "medium":
+      return {
+        bg: "bg-amber-500/15",
+        text: "text-amber-700",
+        border: "border-amber-500/30",
+      };
+    default:
+      return {
+        bg: "bg-sky-500/15",
+        text: "text-sky-700",
+        border: "border-sky-500/30",
+      };
+  }
+}
+
+function wardFillColor(defectCount: number): string {
+  if (defectCount === 0) return "#22c55e";
+  if (defectCount <= 3) return "#facc15";
+  if (defectCount <= 8) return "#f97316";
+  return "#ef4444";
+}
+
+// ─── Map sub-components ──────────────────────────────────────────────────────
+
+function CenterTracker({
+  onChange,
+}: {
+  onChange: (loc: { latitude: number; longitude: number }) => void;
+}) {
+  useMapEvents({
+    moveend(e) {
+      const c = e.target.getCenter();
+      onChange({ latitude: c.lat, longitude: c.lng });
+    },
+  });
+  return null;
+}
+
+function FlyToTarget({
+  target,
+}: {
+  target: { lat: number; lng: number; zoom: number } | null;
+}) {
+  const map = useMap();
   useEffect(() => {
-    roadsService
-      .getRoads({
-        stateId: areaFilter.stateId,
-        districtId: areaFilter.districtId,
-        cityId: areaFilter.cityId,
-      })
-      .then((res) => {
-        setRoads(res);
-        if (!selectedRoadId && res.length > 0) {
-          setSelectedRoadId(res[0].id);
-        }
-      });
-  }, [areaFilter.stateId, areaFilter.districtId, areaFilter.cityId]);
-
-  // Load Images & Inspections for selected corridor
-  useEffect(() => {
-    if (!selectedRoadId) return;
-    setLoading(true);
-    Promise.all([
-      roadsService.getRoadImages(selectedRoadId),
-      roadsService.getInspections(selectedRoadId),
-    ])
-      .then(([imgs, insps]) => {
-        setImages(imgs);
-        setInspections(insps);
-        if (imgs.length > 0) {
-          setActiveInspectorImage(imgs[0]);
-        }
-        if (insps.length > 0) {
-          setInspectionAId(insps[0].id);
-          setInspectionBId(insps[1]?.id || insps[0].id);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [selectedRoadId]);
-
-  const selectedRoad = roads.find((r) => r.id === selectedRoadId) || roads[0];
-
-  const filteredImages = images.filter((img) => {
-    if (selectedInspectionId !== "all" && img.inspectionId !== selectedInspectionId) {
-      return false;
+    if (target) {
+      map.flyTo([target.lat, target.lng], target.zoom, { duration: 0.8 });
     }
-    if (cameraFilter !== "all" && img.cameraId !== cameraFilter) {
-      return false;
-    }
-    return true;
+  }, [target, map]);
+  return null;
+}
+
+// ─── Main Page ───────────────────────────────────────────────────────────────
+
+function GalleryPage() {
+  // Ward data
+  const [wards, setWards] = useState<Ward[]>([]);
+  const [wardsLoading, setWardsLoading] = useState(true);
+
+  // Active ward
+  const [activeWard, setActiveWard] = useState<Ward | null>(null);
+  const [wardDefects, setWardDefects] = useState<WardDefect[]>([]);
+  const [defectsLoading, setDefectsLoading] = useState(false);
+
+  // Selected photo / road highlight
+  const [selectedDefect, setSelectedDefect] = useState<WardDefect | null>(null);
+  const [highlightedRoad, setHighlightedRoad] = useState<NearestRoadInfo | null>(null);
+  const [flyTarget, setFlyTarget] = useState<{
+    lat: number;
+    lng: number;
+    zoom: number;
+  } | null>(null);
+
+  // Lightbox
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  // Map center
+  const [center, setCenter] = useState({
+    latitude: 19.033,
+    longitude: 73.0297,
   });
 
-  // Comparison helpers
-  const inspA = inspections.find((i) => i.id === inspectionAId) || inspections[0];
-  const inspB = inspections.find((i) => i.id === inspectionBId) || inspections[1] || inspections[0];
-  const actualAId = inspA?.id || inspectionAId;
-  const actualBId = inspB?.id || inspectionBId;
+  const galleryRef = useRef<HTMLDivElement | null>(null);
 
-  const imagesA = images.filter((img) => img.inspectionId === actualAId);
-  const imagesB = images.filter((img) => img.inspectionId === actualBId);
-  const imgA = imagesA[selectedChainageIdx] || imagesA[0];
-  const imgB = imagesB[selectedChainageIdx] || imagesB[0];
-  const rhiDiff = (inspA?.rhi || 0) - (inspB?.rhi || 0);
+  // ─── Fetch wards on mount ────────────────────────────────────────────────
+  useEffect(() => {
+    setWardsLoading(true);
+    fetch(`${API_BASE}/wards`)
+      .then((r) => r.json())
+      .then((data) => setWards(data.wards || []))
+      .catch((err) => console.error("Failed to fetch wards:", err))
+      .finally(() => setWardsLoading(false));
+  }, []);
 
-  // Inspector helpers
-  const currentInspectorIdx = activeInspectorImage
-    ? filteredImages.findIndex((i) => i.id === activeInspectorImage.id)
-    : 0;
-  const hasPrev = currentInspectorIdx > 0;
-  const hasNext = currentInspectorIdx < filteredImages.length - 1 && currentInspectorIdx !== -1;
+  // ─── Fetch defects when activeWard changes ───────────────────────────────
+  useEffect(() => {
+    if (!activeWard) {
+      setWardDefects([]);
+      return;
+    }
+    setDefectsLoading(true);
+    setSelectedDefect(null);
+    setHighlightedRoad(null);
+    fetch(`${API_BASE}/wards/${activeWard.ward_number}/defects`)
+      .then((r) => r.json())
+      .then((data) => setWardDefects(data.defects || []))
+      .catch(() => setWardDefects([]))
+      .finally(() => setDefectsLoading(false));
+  }, [activeWard]);
 
-  const handlePrevInspector = () => {
-    if (hasPrev) setActiveInspectorImage(filteredImages[currentInspectorIdx - 1]);
-  };
+  // Only defects with images
+  const defectsWithImages = wardDefects.filter(
+    (d) => d.image_url && d.image_url.length > 0
+  );
 
-  const handleNextInspector = () => {
-    if (hasNext) setActiveInspectorImage(filteredImages[currentInspectorIdx + 1]);
-  };
+  // ─── Handle clicking on a photo card ─────────────────────────────────────
+  const handlePhotoClick = useCallback(async (defect: WardDefect) => {
+    setSelectedDefect(defect);
+    setFlyTarget({ lat: defect.latitude, lng: defect.longitude, zoom: 17 });
 
-  const handleSelectImageForInspector = (img: RoadImage) => {
-    setActiveInspectorImage(img);
-    setActiveTab("inspector");
-  };
+    try {
+      const res = await fetch(
+        `${API_BASE}/roads/nearest?lat=${defect.latitude}&lng=${defect.longitude}&threshold=200`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setHighlightedRoad(data.road || null);
+      } else {
+        setHighlightedRoad(null);
+      }
+    } catch {
+      setHighlightedRoad(null);
+    }
+  }, []);
+
+  // ─── Handle ward click from the map ──────────────────────────────────────
+  const handleWardSelect = useCallback(
+    (ward: Ward) => {
+      if (activeWard?.id === ward.id) return;
+      setActiveWard(ward);
+      setHighlightedRoad(null);
+      setSelectedDefect(null);
+
+      try {
+        const gj = L.geoJSON(ward.geometry as any);
+        const c = gj.getBounds().getCenter();
+        setFlyTarget({ lat: c.lat, lng: c.lng, zoom: 15 });
+      } catch {
+        /* ignore */
+      }
+
+      setTimeout(() => {
+        galleryRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 200);
+    },
+    [activeWard]
+  );
+
+  // ─── GeoJSON style per ward ──────────────────────────────────────────────
+  const wardStyle = useCallback(
+    (feature: any) => {
+      const wardNumber = feature?.properties?.ward_number;
+      const ward = wards.find((w) => w.ward_number === wardNumber);
+      const isActive = activeWard?.ward_number === wardNumber;
+
+      return {
+        fillColor: ward ? wardFillColor(ward.defect_count) : "#94a3b8",
+        fillOpacity: isActive ? 0.55 : 0.3,
+        color: isActive ? "#0ea5e9" : "#475569",
+        weight: isActive ? 3 : 1.5,
+        opacity: 1,
+      };
+    },
+    [wards, activeWard]
+  );
+
+  // ─── Build GeoJSON FeatureCollection ─────────────────────────────────────
+  const wardGeoJSON = useMemo(() => {
+    if (wards.length === 0) return null;
+    return {
+      type: "FeatureCollection" as const,
+      features: wards.map((w) => ({
+        type: "Feature" as const,
+        properties: {
+          ward_number: w.ward_number,
+          node: w.node,
+          defect_count: w.defect_count,
+        },
+        geometry: w.geometry,
+      })),
+    };
+  }, [wards]);
+
+  // ─── GeoJSON event handlers ──────────────────────────────────────────────
+  const onEachWardFeature = useCallback(
+    (feature: any, layer: L.Layer) => {
+      const wn = feature.properties?.ward_number;
+      const ward = wards.find((w) => w.ward_number === wn);
+
+      layer.bindTooltip(
+        `<div style="font-size:12px;font-weight:600;">Ward ${wn}</div>
+         <div style="font-size:11px;color:#64748b;">${ward?.node || "—"}</div>
+         <div style="font-size:11px;">${ward?.defect_count ?? 0} defect(s)</div>`,
+        { sticky: true, direction: "top", offset: [0, -10] }
+      );
+
+      layer.on({
+        click: () => {
+          if (ward) handleWardSelect(ward);
+        },
+        mouseover: (e: any) => {
+          e.target.setStyle({
+            fillOpacity: 0.5,
+            weight: 2.5,
+            color: "#0ea5e9",
+          });
+        },
+        mouseout: (e: any) => {
+          const isActive = activeWard?.ward_number === wn;
+          e.target.setStyle({
+            fillOpacity: isActive ? 0.55 : 0.3,
+            weight: isActive ? 3 : 1.5,
+            color: isActive ? "#0ea5e9" : "#475569",
+          });
+        },
+      });
+    },
+    [wards, activeWard, handleWardSelect]
+  );
+
+  // ─── Stats ───────────────────────────────────────────────────────────────
+  const totalPhotos = wards.reduce((s, w) => s + w.defect_count, 0);
+  const wardsWithPhotos = wards.filter((w) => w.defect_count > 0).length;
 
   return (
     <AppShell
-      areaFilter={areaFilter}
-      title="Road Inspection Image & Telemetry Gallery"
-      subtitle="Multi-camera surveillance frames with AI distress localization and multi-epoch temporal comparison"
+      title="Inspection Gallery"
+      subtitle="Browse annotated defect photos by ward — click a ward to view images"
     >
-      <div className="space-y-4 p-4 lg:p-6">
-        {/* Top Breadcrumbs */}
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Link
-              to="/"
-              className="flex items-center gap-1 font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
-            </Link>
-            {selectedRoad && (
-              <>
-                <ChevronRight className="h-3 w-3 text-muted-foreground/40" />
-                <Link
-                  to="/roads/$id"
-                  params={{ id: selectedRoad.id }}
-                  className="font-mono font-medium text-foreground hover:text-primary transition-colors"
-                >
-                  {selectedRoad.code} ({selectedRoad.name})
-                </Link>
-              </>
-            )}
+      <div className="space-y-0">
+        {/* ── KPI Stats Row ─────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 lg:p-6 pb-0">
+          <div className="panel p-3.5 border-l-4 border-l-sky-500">
+            <span className="label-caps">Total Wards</span>
+            <div className="mt-1 text-2xl font-bold font-mono text-sky-600">
+              {wards.length}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              Municipal boundaries loaded
+            </div>
+          </div>
+
+          <div className="panel p-3.5 border-l-4 border-l-violet-500">
+            <span className="label-caps">Total Photos</span>
+            <div className="mt-1 text-2xl font-bold font-mono text-violet-600">
+              {totalPhotos}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              Defect images across wards
+            </div>
+          </div>
+
+          <div className="panel p-3.5 border-l-4 border-l-amber-500">
+            <span className="label-caps">Wards with Images</span>
+            <div className="mt-1 text-2xl font-bold font-mono text-amber-600">
+              {wardsWithPhotos}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              Containing defect imagery
+            </div>
+          </div>
+
+          <div className="panel p-3.5 border-l-4 border-l-emerald-500">
+            <span className="label-caps">Active Ward</span>
+            <div className="mt-1 text-2xl font-bold font-mono text-emerald-600">
+              {activeWard ? `#${activeWard.ward_number}` : "—"}
+            </div>
+            <div className="text-[11px] text-muted-foreground truncate">
+              {activeWard?.node || "Click a ward on the map"}
+            </div>
           </div>
         </div>
 
-        {/* Gallery Corridor Control Bar */}
-        <div className="panel p-4 flex flex-col md:flex-row items-center justify-between gap-3">
-          {/* Corridor selector */}
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <span className="label-caps shrink-0">Target Corridor:</span>
-            <select
-              value={selectedRoadId}
-              onChange={(e) => {
-                setSelectedRoadId(e.target.value);
-                setSelectedInspectionId("all");
-              }}
-              className="rounded-md border border-input bg-background px-3 py-1.5 text-xs font-semibold text-foreground focus:ring-1 focus:ring-primary cursor-pointer w-full md:w-80"
-            >
-              {roads.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.code} - {r.name} (RHI: {r.rhi})
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* ── Full-Width Map ────────────────────────────────────────────── */}
+        <div className="p-4 lg:p-6 pt-4">
+          <div className="panel overflow-hidden">
+            {/* Map header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
 
-          {/* Gallery View Mode Tabs */}
-          <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 p-1 w-full md:w-auto overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => setActiveTab("grid")}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                activeTab === "grid"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-              <span>Inspection Grid</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("compare")}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                activeTab === "compare"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <ArrowLeftRight className="h-3.5 w-3.5" />
-              <span>Epoch Comparison</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("inspector")}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                activeTab === "inspector"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <Eye className="h-3.5 w-3.5" />
-              <span>Frame Inspector</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Selected Road Status Bar */}
-        {selectedRoad && (
-          <div className="panel p-3 bg-muted/20 flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-3">
-              <span className="font-mono font-bold text-foreground">{selectedRoad.code}</span>
-              <span className="text-muted-foreground">•</span>
-              <span className="font-medium text-foreground">{selectedRoad.name}</span>
-              <span className="text-muted-foreground">({selectedRoad.lengthKm} km • {selectedRoad.lanes} Lanes)</span>
+              <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                {wardsLoading ? (
+                  <span className="flex items-center gap-1 animate-pulse text-primary font-mono">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Loading wards...
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-mono">
+                      LAT: {center.latitude.toFixed(5)}
+                    </span>
+                    <span className="font-mono">
+                      LNG: {center.longitude.toFixed(5)}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <span className="text-muted-foreground">
-                Health: <strong className="text-foreground">RHI {selectedRoad.rhi}</strong>
-              </span>
-              <span className="text-muted-foreground">
-                Surveillance Runs: <strong className="text-foreground">{inspections.length}</strong>
-              </span>
-              <span className="text-muted-foreground">
-                Total Frames: <strong className="text-foreground">{images.length}</strong>
-              </span>
-            </div>
-          </div>
-        )}
+            {/* Leaflet map */}
+            <div className="relative h-[300px]">
+              <MapContainer
+                center={[center.latitude, center.longitude]}
+                zoom={12}
+                className="h-full w-full z-0"
+                scrollWheelZoom
+              >
+                <TileLayer
+                  attribution="&copy; OpenStreetMap contributors"
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
 
-        {/* ================= TAB 1: INSPECTION GRID ================= */}
-        {activeTab === "grid" && (
-          <div className="space-y-4">
-            {/* Filter controls */}
-            <div className="panel p-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={selectedInspectionId}
-                  onChange={(e) => setSelectedInspectionId(e.target.value)}
-                  className="rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-foreground cursor-pointer"
-                >
-                  <option value="all">All Inspection Runs ({inspections.length})</option>
-                  {inspections.map((ins, i) => (
-                    <option key={ins.id} value={ins.id}>
-                      Run #{i + 1} • {formatDate(ins.date)} (RHI: {ins.rhi})
-                    </option>
-                  ))}
-                </select>
+                {wardGeoJSON && (
+                  <GeoJSON
+                    key={`wards-${activeWard?.id ?? "none"}`}
+                    data={wardGeoJSON as any}
+                    style={wardStyle}
+                    onEachFeature={onEachWardFeature}
+                  />
+                )}
 
-                <select
-                  value={cameraFilter}
-                  onChange={(e) => setCameraFilter(e.target.value)}
-                  className="rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-foreground cursor-pointer"
-                >
-                  <option value="all">All Camera Sensors</option>
-                  <option value="CAM-FRONT">CAM-FRONT (Forward High-Res)</option>
-                  <option value="CAM-ROAD">CAM-ROAD (Pavement Downward)</option>
-                </select>
-              </div>
+                {highlightedRoad?.geometry && (
+                  <GeoJSON
+                    key={`road-hl-${highlightedRoad.id}`}
+                    data={highlightedRoad.geometry}
+                    style={{
+                      color: "#0284c7",
+                      weight: 6,
+                      opacity: 0.95,
+                      lineCap: "round",
+                      lineJoin: "round",
+                    }}
+                  />
+                )}
 
-              <span className="text-xs text-muted-foreground font-mono">
-                {filteredImages.length} frames
-              </span>
-            </div>
+                <CenterTracker onChange={setCenter} />
+                <FlyToTarget target={flyTarget} />
+              </MapContainer>
 
-            {/* Grid */}
-            {filteredImages.length === 0 ? (
-              <div className="panel p-12 text-center">
-                <Images className="h-10 w-10 text-muted-foreground/50 mx-auto" />
-                <h3 className="mt-3 text-sm font-semibold text-foreground">
-                  No Inspection Frames Found
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  No imagery matches current filter criteria.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredImages.map((img) => {
-                  const band = rhiBand(img.rhiAtCapture);
-                  const color = RHI_HEX[band];
-                  return (
-                    <div
-                      key={img.id}
-                      onClick={() => handleSelectImageForInspector(img)}
-                      className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-xs hover:border-primary hover:shadow-md transition-all cursor-pointer flex flex-col"
-                    >
-                      {/* Thumbnail */}
-                      <div className="relative aspect-4/3 overflow-hidden bg-muted">
-                        <img
-                          src={img.url}
-                          alt={img.id}
-                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-
-                        {/* Badges */}
-                        <div className="absolute top-2 left-2 flex items-center gap-1.5">
-                          <span
-                            className="rounded-md px-2 py-0.5 text-[10px] font-bold uppercase shadow-sm"
-                            style={{ backgroundColor: `${color}ee`, color: "#ffffff" }}
-                          >
-                            RHI {img.rhiAtCapture}
-                          </span>
-                          {img.defectsDetected > 0 && (
-                            <span className="flex items-center gap-1 rounded-md bg-rose-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
-                              <AlertTriangle className="h-3 w-3" />
-                              {img.defectsDetected}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Inspector click hint */}
-                        <div className="absolute top-2 right-2 rounded-md bg-black/60 p-1 text-white opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs">
-                          <Eye className="h-3.5 w-3.5" />
-                        </div>
-
-                        {/* Bottom Gradient */}
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 text-white">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="font-mono font-semibold">
-                              Ch. {img.chainageKm} km
-                            </span>
-                            <span className="text-[10px] text-zinc-300 font-mono">
-                              {img.cameraId}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Card Footer */}
-                      <div className="p-2.5 flex items-center justify-between text-[11px] text-muted-foreground border-t border-border/60">
-                        <div className="flex items-center gap-1 truncate">
-                          <Clock className="h-3 w-3 shrink-0" />
-                          <span>{formatDate(img.capturedAt)}</span>
-                        </div>
-                        <span className="text-[10px] font-mono text-primary font-medium group-hover:underline">
-                          Inspect AI Box →
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ================= TAB 2: TEMPORAL EPOCH COMPARISON ================= */}
-        {activeTab === "compare" && (
-          <div className="panel overflow-hidden space-y-0">
-            {/* Header */}
-            <div className="p-5 border-b border-border bg-muted/30 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
-                  <ArrowLeftRight className="h-5 w-5" />
+              {/* Legend overlay */}
+              <div className="absolute bottom-3 left-3 z-[1000] rounded-lg bg-card/90 backdrop-blur-sm border border-border p-2.5 text-[10px] space-y-1 shadow-md">
+                <div className="font-semibold text-foreground text-[11px] mb-1.5">
+                  Defect Density
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-foreground">
-                    Temporal Multi-Epoch Pavement Comparison
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Side-by-side surface deterioration and post-repair tracking across surveillance passes
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-[#22c55e]" />
+                  <span className="text-muted-foreground">0 defects</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-[#facc15]" />
+                  <span className="text-muted-foreground">1–3 defects</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-[#f97316]" />
+                  <span className="text-muted-foreground">4–8 defects</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-[#ef4444]" />
+                  <span className="text-muted-foreground">9+ defects</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Active ward info bar */}
+            {activeWard && (
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-border bg-primary/5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 text-primary shrink-0">
+                    <Shield className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-foreground">
+                      Ward {activeWard.ward_number}{" "}
+                      <span className="text-muted-foreground font-normal">
+                        — {activeWard.node || "Unknown Node"}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground font-mono">
+                      {activeWard.municipal_corporation || "—"} •{" "}
+                      {activeWard.defect_count} defect(s) total
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setActiveWard(null);
+                    setWardDefects([]);
+                    setSelectedDefect(null);
+                    setHighlightedRoad(null);
+                  }}
+                  className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                >
+                  Clear Selection ×
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Photo Gallery Panel (when a ward is active) ──────────────── */}
+        {activeWard && (
+          <div ref={galleryRef} className="px-4 lg:px-6 pb-6">
+            <div className="panel overflow-hidden">
+              {/* Panel header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <Images className="h-4 w-4 text-primary" />
+                  <h2 className="text-sm font-semibold text-foreground">
+                    Photos in Ward {activeWard.ward_number}
+                  </h2>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono font-semibold text-muted-foreground">
+                    {defectsWithImages.length} images
+                  </span>
+                </div>
+
+                {selectedDefect && highlightedRoad && (
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <Navigation className="h-3.5 w-3.5 text-primary" />
+                    <span className="font-semibold text-foreground">
+                      {highlightedRoad.name || "Unnamed Road"}
+                    </span>
+                    <span className="text-muted-foreground font-mono">
+                      #{highlightedRoad.id} • {highlightedRoad.type}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Gallery body */}
+              {defectsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
+                  <span className="text-xs text-muted-foreground font-mono">
+                    Loading photos...
+                  </span>
+                </div>
+              ) : defectsWithImages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/10 text-violet-600 mb-3">
+                    <Camera className="h-6 w-6" />
+                  </div>
+                  <div className="text-sm font-semibold text-foreground">
+                    No Photos Available
+                  </div>
+                  <p className="text-xs text-muted-foreground max-w-xs mt-1">
+                    Ward {activeWard.ward_number} has no defect images recorded
+                    yet. Run defect detection via Media Upload to generate
+                    imagery.
                   </p>
                 </div>
-              </div>
-            </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+                  {defectsWithImages.map((defect) => {
+                    const sev = severityColor(defect.severity);
+                    const isSelected = selectedDefect?.id === defect.id;
 
-            {/* Comparison Dropdowns */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-border p-4 bg-background">
-              {/* Epoch A */}
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-3">
-                <div>
-                  <span className="label-caps block">Inspection Epoch A (Baseline)</span>
-                  <select
-                    value={actualAId}
-                    onChange={(e) => setInspectionAId(e.target.value)}
-                    className="mt-1 rounded border border-input bg-card px-2.5 py-1 text-xs font-semibold text-foreground cursor-pointer"
-                  >
-                    {inspections.map((ins, i) => (
-                      <option key={ins.id} value={ins.id}>
-                        Run {i + 1} • {formatDate(ins.date)} (RHI: {ins.rhi})
-                      </option>
-                    ))}
-                  </select>
+                    return (
+                      <div
+                        key={defect.id}
+                        onClick={() => handlePhotoClick(defect)}
+                        className={`group relative overflow-hidden rounded-xl border bg-card shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col ${isSelected
+                          ? "border-primary ring-2 ring-primary/30"
+                          : "border-border hover:border-primary"
+                          }`}
+                      >
+                        {/* Thumbnail */}
+                        <div className="relative aspect-4/3 overflow-hidden bg-muted">
+                          <img
+                            src={defect.image_url!}
+                            alt={`Defect #${defect.id}`}
+                            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='150'%3E%3Crect fill='%23334155' width='200' height='150'/%3E%3Ctext fill='%2394a3b8' font-size='12' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EImage unavailable%3C/text%3E%3C/svg%3E";
+                            }}
+                          />
+
+                          {/* Top-left badges */}
+                          <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                            <span
+                              className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase shadow-sm ${sev.bg} ${sev.text} border ${sev.border} backdrop-blur-sm`}
+                            >
+                              {defect.severity}
+                            </span>
+                          </div>
+
+                          {/* Expand hint on hover */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLightboxUrl(defect.image_url);
+                            }}
+                            className="absolute top-2 right-2 rounded-md bg-black/60 p-1 text-white opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs cursor-pointer"
+                            title="View Full Size"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+
+                          {/* Bottom gradient */}
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 text-white">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-semibold">
+                                {getDefectDisplayName(defect.type)}
+                              </span>
+                              <span className="font-mono text-[10px] text-zinc-300">
+                                {Math.round(defect.confidence * 100)}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card footer */}
+                        <div className="p-2.5 flex items-center justify-between text-[11px] text-muted-foreground border-t border-border/60">
+                          <div className="flex items-center gap-1 truncate">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            <span className="font-mono text-[10px]">
+                              {defect.latitude.toFixed(4)},{" "}
+                              {defect.longitude.toFixed(4)}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono text-primary font-medium">
+                            #{defect.id}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                {inspA && (
-                  <div className="text-right">
-                    <div
-                      className="font-mono text-lg font-bold"
-                      style={{ color: RHI_HEX[rhiBand(inspA.rhi)] }}
-                    >
-                      RHI {inspA.rhi}
+              )}
+
+              {/* Road detail strip when a photo is selected */}
+              {selectedDefect && highlightedRoad && (
+                <div className="border-t border-border px-4 py-3 bg-primary/5 flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                      <Navigation className="h-4 w-4" />
                     </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      Vehicle: {inspA.vehicle}
+                    <div>
+                      <div className="text-xs font-bold text-foreground">
+                        {highlightedRoad.name || "Unnamed Road"}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground font-mono">
+                        Road #{highlightedRoad.id} •{" "}
+                        {highlightedRoad.distance
+                          ? `${highlightedRoad.distance}m from defect`
+                          : "Matched"}
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
 
-              {/* Epoch B */}
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-3">
-                <div>
-                  <span className="label-caps block">Inspection Epoch B (Comparison)</span>
-                  <select
-                    value={actualBId}
-                    onChange={(e) => setInspectionBId(e.target.value)}
-                    className="mt-1 rounded border border-input bg-card px-2.5 py-1 text-xs font-semibold text-foreground cursor-pointer"
-                  >
-                    {inspections.map((ins, i) => (
-                      <option key={ins.id} value={ins.id}>
-                        Run {i + 1} • {formatDate(ins.date)} (RHI: {ins.rhi})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {inspB && (
-                  <div className="text-right">
-                    <div
-                      className="font-mono text-lg font-bold"
-                      style={{ color: RHI_HEX[rhiBand(inspB.rhi)] }}
-                    >
-                      RHI {inspB.rhi}
+                  <div className="flex items-center gap-4 text-xs ml-auto">
+                    <div>
+                      <span className="text-muted-foreground">Type: </span>
+                      <span className="font-semibold text-foreground capitalize">
+                        {highlightedRoad.type}
+                      </span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      Vehicle: {inspB.vehicle}
+                    <div>
+                      <span className="text-muted-foreground">RHI: </span>
+                      {highlightedRoad.rhi !== null ? (
+                        <span className="font-mono font-bold text-foreground">
+                          {highlightedRoad.rhi}/100
+                        </span>
+                      ) : (
+                        <span className="font-mono text-muted-foreground italic">
+                          null
+                        </span>
+                      )}
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Chainage Selector */}
-            <div className="flex items-center justify-between border-b border-border bg-muted/10 px-6 py-2.5 text-xs">
-              <span className="font-medium text-muted-foreground">
-                Select Corridor Chainage Point:
-              </span>
-              <div className="flex items-center gap-2">
-                {[0, 1, 2, 3].map((idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setSelectedChainageIdx(idx)}
-                    className={`rounded px-3 py-1 font-mono text-xs font-semibold transition-colors cursor-pointer ${
-                      selectedChainageIdx === idx
-                        ? "bg-primary text-primary-foreground shadow-xs"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                    }`}
-                  >
-                    Ch. {(idx * ((selectedRoad?.lengthKm || 2.4) / 4) + 0.4).toFixed(1)} km
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Side-by-Side Images */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-zinc-950">
-              {/* Frame A */}
-              <div className="flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-black p-4 relative overflow-hidden">
-                <div className="absolute top-3 left-3 z-10 rounded bg-black/75 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-xs">
-                  Epoch A • {formatDate(inspA?.date)}
                 </div>
-                {imgA ? (
-                  <img
-                    src={imgA.url}
-                    alt="Epoch A"
-                    className="max-h-[50vh] rounded-lg object-contain shadow-xl"
-                  />
-                ) : (
-                  <div className="text-zinc-600 text-xs py-20">No frame data</div>
-                )}
-                {imgA && (
-                  <div className="mt-3 text-center text-xs text-zinc-400">
-                    Ch. {imgA.chainageKm} km • Sensor: {imgA.cameraId} • {imgA.defectsDetected} defects detected
-                  </div>
-                )}
-              </div>
-
-              {/* Frame B */}
-              <div className="flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-black p-4 relative overflow-hidden">
-                <div className="absolute top-3 left-3 z-10 rounded bg-black/75 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-xs">
-                  Epoch B • {formatDate(inspB?.date)}
-                </div>
-                {imgB ? (
-                  <img
-                    src={imgB.url}
-                    alt="Epoch B"
-                    className="max-h-[50vh] rounded-lg object-contain shadow-xl"
-                  />
-                ) : (
-                  <div className="text-zinc-600 text-xs py-20">No frame data</div>
-                )}
-                {imgB && (
-                  <div className="mt-3 text-center text-xs text-zinc-400">
-                    Ch. {imgB.chainageKm} km • Sensor: {imgB.cameraId} • {imgB.defectsDetected} defects detected
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Comparison Shift Footer */}
-            <div className="p-4 border-t border-border bg-card flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground font-medium">Condition Shift:</span>
-                {rhiDiff > 0 ? (
-                  <span className="flex items-center gap-1 font-semibold text-emerald-600">
-                    <TrendingUp className="h-4 w-4" /> +{rhiDiff} RHI (Improvement / Post-Maintenance Rectification)
-                  </span>
-                ) : rhiDiff < 0 ? (
-                  <span className="flex items-center gap-1 font-semibold text-rose-600">
-                    <TrendingDown className="h-4 w-4" /> {rhiDiff} RHI (Degradation / Defect Growth)
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground font-semibold">Stable (0 Δ RHI)</span>
-                )}
-              </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* ================= TAB 3: FRAME INSPECTOR ================= */}
-        {activeTab === "inspector" && (
-          <div className="panel overflow-hidden space-y-0">
-            {/* Top Inspector Bar */}
-            <div className="p-4 border-b border-border bg-muted/30 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm font-bold text-foreground">
-                    {activeInspectorImage?.id || "Frame"}
-                  </span>
-                  {activeInspectorImage && (
-                    <span
-                      className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                      style={{
-                        backgroundColor: `${RHI_HEX[rhiBand(activeInspectorImage.rhiAtCapture)]}22`,
-                        color: RHI_HEX[rhiBand(activeInspectorImage.rhiAtCapture)],
-                      }}
-                    >
-                      RHI {activeInspectorImage.rhiAtCapture}
-                    </span>
-                  )}
-                </div>
-                <span className="text-muted-foreground hidden sm:inline">|</span>
-                <div className="text-xs text-muted-foreground hidden sm:block">
-                  Ch. {activeInspectorImage?.chainageKm} km • Captured {formatDate(activeInspectorImage?.capturedAt)}
-                </div>
-              </div>
-
-              {/* Controls */}
-              <div className="flex items-center gap-2">
-                {/* AI Box Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setShowAiBoxes((p) => !p)}
-                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold border transition-colors cursor-pointer ${
-                    showAiBoxes
-                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                      : "bg-background border-border text-muted-foreground"
-                  }`}
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>AI Detections</span>
-                </button>
-
-                {/* Zoom Controls */}
-                <div className="flex items-center rounded-md border border-border bg-background">
-                  <button
-                    type="button"
-                    onClick={() => setZoomLevel((z) => Math.max(0.75, z - 0.25))}
-                    className="p-1.5 text-muted-foreground hover:text-foreground cursor-pointer"
-                    title="Zoom Out"
-                  >
-                    <ZoomOut className="h-4 w-4" />
-                  </button>
-                  <span className="px-1.5 text-[11px] font-mono text-muted-foreground">
-                    {Math.round(zoomLevel * 100)}%
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setZoomLevel((z) => Math.min(2.5, z + 0.25))}
-                    className="p-1.5 text-muted-foreground hover:text-foreground cursor-pointer"
-                    title="Zoom In"
-                  >
-                    <ZoomIn className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Frame Viewer Box */}
-            <div className="relative flex min-h-[58vh] items-center justify-center overflow-hidden bg-black p-4 select-none">
-              {/* Prev Button */}
-              {hasPrev && (
-                <button
-                  type="button"
-                  onClick={handlePrevInspector}
-                  className="absolute left-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-zinc-900/80 p-2 text-white shadow-lg backdrop-blur-xs hover:bg-zinc-800 transition-colors cursor-pointer"
-                  title="Previous Frame"
-                >
-                  <ChevronLeft className="h-6 w-6" />
-                </button>
-              )}
-
-              {/* Image with zoom and bounding boxes */}
-              {activeInspectorImage && (
-                <div
-                  className="relative transition-transform duration-150 ease-out"
-                  style={{ transform: `scale(${zoomLevel})` }}
-                >
-                  <img
-                    src={activeInspectorImage.url}
-                    alt="Road Frame"
-                    className="max-h-[60vh] max-w-full rounded-lg object-contain shadow-2xl"
-                  />
-
-                  {showAiBoxes && (
-                    <>
-                      <div
-                        className="absolute border-2 border-rose-500 bg-rose-500/25 rounded"
-                        style={{
-                          top: "35%",
-                          left: "40%",
-                          width: "28%",
-                          height: "22%",
-                        }}
-                      >
-                        <div className="absolute -top-6 left-0 flex items-center gap-1 rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white uppercase shadow-xs">
-                          <span>Pothole</span>
-                          <span className="opacity-80">92%</span>
-                        </div>
-                      </div>
-
-                      <div
-                        className="absolute border-2 border-amber-500 bg-amber-500/20 rounded"
-                        style={{
-                          top: "60%",
-                          left: "20%",
-                          width: "45%",
-                          height: "15%",
-                        }}
-                      >
-                        <div className="absolute -top-6 left-0 flex items-center gap-1 rounded bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white uppercase shadow-xs">
-                          <span>Crack / Distress</span>
-                          <span className="opacity-80">86%</span>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Next Button */}
-              {hasNext && (
-                <button
-                  type="button"
-                  onClick={handleNextInspector}
-                  className="absolute right-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-zinc-900/80 p-2 text-white shadow-lg backdrop-blur-xs hover:bg-zinc-800 transition-colors cursor-pointer"
-                  title="Next Frame"
-                >
-                  <ChevronRight className="h-6 w-6" />
-                </button>
-              )}
-            </div>
-
-            {/* Sensor Telemetry Footer */}
-            <div className="p-4 border-t border-border bg-card flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground">
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-1.5">
-                  <Camera className="h-4 w-4 text-primary" />
-                  <span>Camera: <strong className="text-foreground">{activeInspectorImage?.cameraId}</strong></span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  <span>Geo-tag: <strong className="text-foreground">[{activeInspectorImage?.location[0].toFixed(4)}, {activeInspectorImage?.location[1].toFixed(4)}]</strong></span>
-                </div>
-              </div>
-
-              <div>
-                Frame <strong className="text-foreground">{currentInspectorIdx + 1}</strong> of {filteredImages.length}
-              </div>
+        {/* ── Lightbox Modal ───────────────────────────────────────────── */}
+        {lightboxUrl && (
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <div className="relative max-w-[90vw] max-h-[90vh]">
+              <img
+                src={lightboxUrl}
+                alt="Defect full view"
+                className="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl"
+              />
+              <button
+                onClick={() => setLightboxUrl(null)}
+                className="absolute -top-3 -right-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-black text-sm font-bold shadow-lg hover:bg-zinc-200 transition-colors cursor-pointer"
+              >
+                ×
+              </button>
             </div>
           </div>
         )}
