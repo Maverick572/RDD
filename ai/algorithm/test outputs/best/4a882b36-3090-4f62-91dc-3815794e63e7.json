@@ -1,0 +1,82 @@
+{
+  "image": "4a882b36-3090-4f62-91dc-3815794e63e7.jpg",
+  "annotated_image": "4a882b36-3090-4f62-91dc-3815794e63e7_annotated.jpg",
+  "detections": [
+    {
+      "class_id": 1,
+      "class": "D00",
+      "confidence": 0.3849,
+      "bbox": [
+        390.79,
+        277.38,
+        448.22,
+        464.31
+      ],
+      "severity": {
+        "severity_score": 13.36,
+        "severity_level": "low",
+        "class_name": "D00",
+        "canonical_class": "D00",
+        "confidence": 0.3849,
+        "bbox": [
+          390.79,
+          277.38,
+          448.22,
+          464.31
+        ],
+        "components": {
+          "class_weight": 0.5,
+          "confidence": 0.3849,
+          "footprint": 0.3782,
+          "shape": 0.3222,
+          "visual": 0.0284
+        },
+        "reasons": [
+          "D00 class prior contributes 0.50",
+          "Low detector confidence reduces the estimate"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    },
+    {
+      "class_id": 6,
+      "class": "D20",
+      "confidence": 0.3297,
+      "bbox": [
+        4.32,
+        92.04,
+        452.22,
+        424.62
+      ],
+      "severity": {
+        "severity_score": 17.58,
+        "severity_level": "low",
+        "class_name": "D20",
+        "canonical_class": "D20",
+        "confidence": 0.3297,
+        "bbox": [
+          4.32,
+          92.04,
+          452.22,
+          424.62
+        ],
+        "components": {
+          "class_weight": 0.45,
+          "confidence": 0.3297,
+          "footprint": 1.0,
+          "shape": 0.0495,
+          "visual": 0.2264
+        },
+        "reasons": [
+          "D20 class prior contributes 0.45",
+          "Low detector confidence reduces the estimate",
+          "The detection occupies a substantial image footprint"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    }
+  ],
+  "inference_seconds": 0.0779
+}

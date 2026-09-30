@@ -1,0 +1,43 @@
+{
+  "image": "1aacaa66-29cf-4f20-a45d-7558c2d7c635.jpg",
+  "annotated_image": "1aacaa66-29cf-4f20-a45d-7558c2d7c635_annotated.jpg",
+  "detections": [
+    {
+      "class_id": 1,
+      "class": "D00",
+      "confidence": 0.4326,
+      "bbox": [
+        316.89,
+        164.86,
+        354.54,
+        205.2
+      ],
+      "severity": {
+        "severity_score": 9.8,
+        "severity_level": "low",
+        "class_name": "D00",
+        "canonical_class": "D00",
+        "confidence": 0.4326,
+        "bbox": [
+          316.89,
+          164.86,
+          354.54,
+          205.2
+        ],
+        "components": {
+          "class_weight": 0.5,
+          "confidence": 0.4326,
+          "footprint": 0.1406,
+          "shape": 0.0102,
+          "visual": 0.0498
+        },
+        "reasons": [
+          "D00 class prior contributes 0.50"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    }
+  ],
+  "inference_seconds": 0.0647
+}

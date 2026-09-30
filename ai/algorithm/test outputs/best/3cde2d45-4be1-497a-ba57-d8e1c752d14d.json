@@ -1,0 +1,79 @@
+{
+  "image": "3cde2d45-4be1-497a-ba57-d8e1c752d14d.jpg",
+  "annotated_image": "3cde2d45-4be1-497a-ba57-d8e1c752d14d_annotated.jpg",
+  "detections": [
+    {
+      "class_id": 1,
+      "class": "D00",
+      "confidence": 0.5292,
+      "bbox": [
+        146.08,
+        167.18,
+        207.02,
+        217.55
+      ],
+      "severity": {
+        "severity_score": 13.26,
+        "severity_level": "low",
+        "class_name": "D00",
+        "canonical_class": "D00",
+        "confidence": 0.5292,
+        "bbox": [
+          146.08,
+          167.18,
+          207.02,
+          217.55
+        ],
+        "components": {
+          "class_weight": 0.5,
+          "confidence": 0.5292,
+          "footprint": 0.2966,
+          "shape": 0.03,
+          "visual": 0.054
+        },
+        "reasons": [
+          "D00 class prior contributes 0.50"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    },
+    {
+      "class_id": 6,
+      "class": "D20",
+      "confidence": 0.4286,
+      "bbox": [
+        452.55,
+        164.78,
+        586.62,
+        218.0
+      ],
+      "severity": {
+        "severity_score": 14.67,
+        "severity_level": "low",
+        "class_name": "D20",
+        "canonical_class": "D20",
+        "confidence": 0.4286,
+        "bbox": [
+          452.55,
+          164.78,
+          586.62,
+          218.0
+        ],
+        "components": {
+          "class_weight": 0.45,
+          "confidence": 0.4286,
+          "footprint": 0.4523,
+          "shape": 0.217,
+          "visual": 0.1764
+        },
+        "reasons": [
+          "D20 class prior contributes 0.45"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    }
+  ],
+  "inference_seconds": 0.0604
+}

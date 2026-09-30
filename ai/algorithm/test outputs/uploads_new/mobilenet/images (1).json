@@ -1,0 +1,417 @@
+{
+  "image": "images (1).jpeg",
+  "annotated_image": "images (1)_annotated.jpg",
+  "detections": [
+    {
+      "class_id": 4,
+      "class": "D40",
+      "confidence": 0.5586,
+      "bbox": [
+        292.4,
+        140.4,
+        340.9,
+        163.19
+      ],
+      "severity": {
+        "severity_score": 35.27,
+        "severity_level": "moderate",
+        "class_name": "D40",
+        "canonical_class": "D40",
+        "confidence": 0.5586,
+        "bbox": [
+          292.4,
+          140.4,
+          340.9,
+          163.19
+        ],
+        "components": {
+          "class_weight": 1.0,
+          "confidence": 0.5586,
+          "footprint": 0.1202,
+          "shape": 0.47,
+          "visual": 0.2089
+        },
+        "reasons": [
+          "D40 class prior contributes 1.00"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    },
+    {
+      "class_id": 4,
+      "class": "D40",
+      "confidence": 0.4896,
+      "bbox": [
+        148.02,
+        56.93,
+        654.51,
+        438.45
+      ],
+      "severity": {
+        "severity_score": 61.21,
+        "severity_level": "high",
+        "class_name": "D40",
+        "canonical_class": "D40",
+        "confidence": 0.4896,
+        "bbox": [
+          148.02,
+          56.93,
+          654.51,
+          438.45
+        ],
+        "components": {
+          "class_weight": 1.0,
+          "confidence": 0.4896,
+          "footprint": 1.0,
+          "shape": 0.7533,
+          "visual": 0.4259
+        },
+        "reasons": [
+          "D40 class prior contributes 1.00",
+          "The detection occupies a substantial image footprint"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    },
+    {
+      "class_id": 4,
+      "class": "D40",
+      "confidence": 0.4251,
+      "bbox": [
+        213.65,
+        190.5,
+        635.22,
+        440.55
+      ],
+      "severity": {
+        "severity_score": 55.92,
+        "severity_level": "high",
+        "class_name": "D40",
+        "canonical_class": "D40",
+        "confidence": 0.4251,
+        "bbox": [
+          213.65,
+          190.5,
+          635.22,
+          440.55
+        ],
+        "components": {
+          "class_weight": 1.0,
+          "confidence": 0.4251,
+          "footprint": 1.0,
+          "shape": 0.5931,
+          "visual": 0.4049
+        },
+        "reasons": [
+          "D40 class prior contributes 1.00",
+          "The detection occupies a substantial image footprint"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    },
+    {
+      "class_id": 4,
+      "class": "D40",
+      "confidence": 0.3635,
+      "bbox": [
+        285.81,
+        344.43,
+        478.5,
+        416.88
+      ],
+      "severity": {
+        "severity_score": 41.64,
+        "severity_level": "moderate",
+        "class_name": "D40",
+        "canonical_class": "D40",
+        "confidence": 0.3635,
+        "bbox": [
+          285.81,
+          344.43,
+          478.5,
+          416.88
+        ],
+        "components": {
+          "class_weight": 1.0,
+          "confidence": 0.3635,
+          "footprint": 0.427,
+          "shape": 0.376,
+          "visual": 0.4911
+        },
+        "reasons": [
+          "D40 class prior contributes 1.00",
+          "Low detector confidence reduces the estimate"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    },
+    {
+      "class_id": 4,
+      "class": "D40",
+      "confidence": 0.3135,
+      "bbox": [
+        267.22,
+        340.53,
+        528.34,
+        436.94
+      ],
+      "severity": {
+        "severity_score": 41.84,
+        "severity_level": "moderate",
+        "class_name": "D40",
+        "canonical_class": "D40",
+        "confidence": 0.3135,
+        "bbox": [
+          267.22,
+          340.53,
+          528.34,
+          436.94
+        ],
+        "components": {
+          "class_weight": 1.0,
+          "confidence": 0.3135,
+          "footprint": 0.5734,
+          "shape": 0.3692,
+          "visual": 0.462
+        },
+        "reasons": [
+          "D40 class prior contributes 1.00",
+          "Low detector confidence reduces the estimate",
+          "The detection occupies a substantial image footprint"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    },
+    {
+      "class_id": 4,
+      "class": "D40",
+      "confidence": 0.2962,
+      "bbox": [
+        309.35,
+        206.66,
+        613.8,
+        331.86
+      ],
+      "severity": {
+        "severity_score": 42.66,
+        "severity_level": "moderate",
+        "class_name": "D40",
+        "canonical_class": "D40",
+        "confidence": 0.2962,
+        "bbox": [
+          309.35,
+          206.66,
+          613.8,
+          331.86
+        ],
+        "components": {
+          "class_weight": 1.0,
+          "confidence": 0.2962,
+          "footprint": 0.7056,
+          "shape": 0.4112,
+          "visual": 0.4003
+        },
+        "reasons": [
+          "D40 class prior contributes 1.00",
+          "Low detector confidence reduces the estimate",
+          "The detection occupies a substantial image footprint"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    },
+    {
+      "class_id": 4,
+      "class": "D40",
+      "confidence": 0.2849,
+      "bbox": [
+        376.32,
+        169.56,
+        526.02,
+        206.47
+      ],
+      "severity": {
+        "severity_score": 34.8,
+        "severity_level": "moderate",
+        "class_name": "D40",
+        "canonical_class": "D40",
+        "confidence": 0.2849,
+        "bbox": [
+          376.32,
+          169.56,
+          526.02,
+          206.47
+        ],
+        "components": {
+          "class_weight": 1.0,
+          "confidence": 0.2849,
+          "footprint": 0.2686,
+          "shape": 0.2465,
+          "visual": 0.5252
+        },
+        "reasons": [
+          "D40 class prior contributes 1.00",
+          "Low detector confidence reduces the estimate"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    },
+    {
+      "class_id": 4,
+      "class": "D40",
+      "confidence": 0.2619,
+      "bbox": [
+        299.86,
+        81.79,
+        551.46,
+        236.13
+      ],
+      "severity": {
+        "severity_score": 45.58,
+        "severity_level": "moderate",
+        "class_name": "D40",
+        "canonical_class": "D40",
+        "confidence": 0.2619,
+        "bbox": [
+          299.86,
+          81.79,
+          551.46,
+          236.13
+        ],
+        "components": {
+          "class_weight": 1.0,
+          "confidence": 0.2619,
+          "footprint": 0.7122,
+          "shape": 0.6134,
+          "visual": 0.4323
+        },
+        "reasons": [
+          "D40 class prior contributes 1.00",
+          "Low detector confidence reduces the estimate",
+          "The detection occupies a substantial image footprint"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    },
+    {
+      "class_id": 4,
+      "class": "D40",
+      "confidence": 0.2581,
+      "bbox": [
+        216.41,
+        172.89,
+        306.69,
+        207.43
+      ],
+      "severity": {
+        "severity_score": 26.11,
+        "severity_level": "moderate",
+        "class_name": "D40",
+        "canonical_class": "D40",
+        "confidence": 0.2581,
+        "bbox": [
+          216.41,
+          172.89,
+          306.69,
+          207.43
+        ],
+        "components": {
+          "class_weight": 1.0,
+          "confidence": 0.2581,
+          "footprint": 0.2018,
+          "shape": 0.3826,
+          "visual": 0.2433
+        },
+        "reasons": [
+          "D40 class prior contributes 1.00",
+          "Low detector confidence reduces the estimate"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    },
+    {
+      "class_id": 4,
+      "class": "D40",
+      "confidence": 0.2548,
+      "bbox": [
+        196.83,
+        161.94,
+        309.97,
+        209.17
+      ],
+      "severity": {
+        "severity_score": 27.64,
+        "severity_level": "moderate",
+        "class_name": "D40",
+        "canonical_class": "D40",
+        "confidence": 0.2548,
+        "bbox": [
+          196.83,
+          161.94,
+          309.97,
+          209.17
+        ],
+        "components": {
+          "class_weight": 1.0,
+          "confidence": 0.2548,
+          "footprint": 0.2642,
+          "shape": 0.4174,
+          "visual": 0.2392
+        },
+        "reasons": [
+          "D40 class prior contributes 1.00",
+          "Low detector confidence reduces the estimate"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    },
+    {
+      "class_id": 4,
+      "class": "D40",
+      "confidence": 0.2531,
+      "bbox": [
+        206.72,
+        56.72,
+        621.79,
+        329.94
+      ],
+      "severity": {
+        "severity_score": 51.63,
+        "severity_level": "high",
+        "class_name": "D40",
+        "canonical_class": "D40",
+        "confidence": 0.2531,
+        "bbox": [
+          206.72,
+          56.72,
+          621.79,
+          329.94
+        ],
+        "components": {
+          "class_weight": 1.0,
+          "confidence": 0.2531,
+          "footprint": 1.0,
+          "shape": 0.6583,
+          "visual": 0.4298
+        },
+        "reasons": [
+          "D40 class prior contributes 1.00",
+          "Low detector confidence reduces the estimate",
+          "The detection occupies a substantial image footprint"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    }
+  ],
+  "inference_seconds": 1.4971
+}

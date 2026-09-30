@@ -1,0 +1,983 @@
+{
+  "model": "best.pt",
+  "role": "Road-damage model",
+  "task": "detect",
+  "classes": {
+    "0": "Block crack",
+    "1": "D00",
+    "2": "D01",
+    "3": "D0w0",
+    "4": "D10",
+    "5": "D11",
+    "6": "D20",
+    "7": "D40",
+    "8": "D43",
+    "9": "D44",
+    "10": "D50",
+    "11": "Repair"
+  },
+  "images": [
+    {
+      "image": "09a77d36-a434-4a2c-b591-e0c8045ba681.jpg",
+      "annotated_image": "09a77d36-a434-4a2c-b591-e0c8045ba681_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 1,
+          "class": "D00",
+          "confidence": 0.3645,
+          "bbox": [
+            308.39,
+            345.12,
+            370.32,
+            387.08
+          ],
+          "severity": {
+            "severity_score": 10.94,
+            "severity_level": "low",
+            "class_name": "D00",
+            "canonical_class": "D00",
+            "confidence": 0.3645,
+            "bbox": [
+              308.39,
+              345.12,
+              370.32,
+              387.08
+            ],
+            "components": {
+              "class_weight": 0.5,
+              "confidence": 0.3645,
+              "footprint": 0.1839,
+              "shape": 0.068,
+              "visual": 0.1475
+            },
+            "reasons": [
+              "D00 class prior contributes 0.50",
+              "Low detector confidence reduces the estimate"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 2.8165
+    },
+    {
+      "image": "0a44cb19-b443-4e7c-937f-364c516acef6.jpg",
+      "annotated_image": "0a44cb19-b443-4e7c-937f-364c516acef6_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 1,
+          "class": "D00",
+          "confidence": 0.4787,
+          "bbox": [
+            82.54,
+            0.0,
+            249.78,
+            576.87
+          ],
+          "severity": {
+            "severity_score": 23.19,
+            "severity_level": "low",
+            "class_name": "D00",
+            "canonical_class": "D00",
+            "confidence": 0.4787,
+            "bbox": [
+              82.54,
+              0.0,
+              249.78,
+              576.87
+            ],
+            "components": {
+              "class_weight": 0.5,
+              "confidence": 0.4787,
+              "footprint": 1.0,
+              "shape": 0.3499,
+              "visual": 0.1456
+            },
+            "reasons": [
+              "D00 class prior contributes 0.50",
+              "The detection occupies a substantial image footprint"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.1021
+    },
+    {
+      "image": "0a46329d-fbe7-4ab2-a16d-1b8bac0fb1db.jpg",
+      "annotated_image": "0a46329d-fbe7-4ab2-a16d-1b8bac0fb1db_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 6,
+          "class": "D20",
+          "confidence": 0.8771,
+          "bbox": [
+            5.21,
+            114.25,
+            339.29,
+            469.0
+          ],
+          "severity": {
+            "severity_score": 27.2,
+            "severity_level": "moderate",
+            "class_name": "D20",
+            "canonical_class": "D20",
+            "confidence": 0.8771,
+            "bbox": [
+              5.21,
+              114.25,
+              339.29,
+              469.0
+            ],
+            "components": {
+              "class_weight": 0.45,
+              "confidence": 0.8771,
+              "footprint": 1.0,
+              "shape": 0.0088,
+              "visual": 0.3206
+            },
+            "reasons": [
+              "D20 class prior contributes 0.45",
+              "High detector confidence supports the estimate",
+              "The detection occupies a substantial image footprint"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        },
+        {
+          "class_id": 1,
+          "class": "D00",
+          "confidence": 0.3317,
+          "bbox": [
+            498.22,
+            376.17,
+            555.05,
+            468.62
+          ],
+          "severity": {
+            "severity_score": 11.31,
+            "severity_level": "low",
+            "class_name": "D00",
+            "canonical_class": "D00",
+            "confidence": 0.3317,
+            "bbox": [
+              498.22,
+              376.17,
+              555.05,
+              468.62
+            ],
+            "components": {
+              "class_weight": 0.5,
+              "confidence": 0.3317,
+              "footprint": 0.2646,
+              "shape": 0.0895,
+              "visual": 0.1456
+            },
+            "reasons": [
+              "D00 class prior contributes 0.50",
+              "Low detector confidence reduces the estimate"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.0776
+    },
+    {
+      "image": "0aae801c-8a3c-4019-9b75-286b9e63ba26.jpg",
+      "annotated_image": "0aae801c-8a3c-4019-9b75-286b9e63ba26_annotated.jpg",
+      "detections": [],
+      "inference_seconds": 0.0688
+    },
+    {
+      "image": "0f45328f-db36-466c-9614-4a07441390e3.jpg",
+      "annotated_image": "0f45328f-db36-466c-9614-4a07441390e3_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 1,
+          "class": "D00",
+          "confidence": 0.4897,
+          "bbox": [
+            462.25,
+            175.56,
+            540.38,
+            248.43
+          ],
+          "severity": {
+            "severity_score": 12.93,
+            "severity_level": "low",
+            "class_name": "D00",
+            "canonical_class": "D00",
+            "confidence": 0.4897,
+            "bbox": [
+              462.25,
+              175.56,
+              540.38,
+              248.43
+            ],
+            "components": {
+              "class_weight": 0.5,
+              "confidence": 0.4897,
+              "footprint": 0.2754,
+              "shape": 0.0103,
+              "visual": 0.1021
+            },
+            "reasons": [
+              "D00 class prior contributes 0.50"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        },
+        {
+          "class_id": 4,
+          "class": "D10",
+          "confidence": 0.2949,
+          "bbox": [
+            50.2,
+            214.22,
+            574.55,
+            267.86
+          ],
+          "severity": {
+            "severity_score": 36.69,
+            "severity_level": "moderate",
+            "class_name": "D10",
+            "canonical_class": "D10",
+            "confidence": 0.2949,
+            "bbox": [
+              50.2,
+              214.22,
+              574.55,
+              267.86
+            ],
+            "components": {
+              "class_weight": 0.85,
+              "confidence": 0.2949,
+              "footprint": 0.6122,
+              "shape": 1.0,
+              "visual": 0.1866
+            },
+            "reasons": [
+              "D10 class prior contributes 0.85",
+              "Low detector confidence reduces the estimate",
+              "The detection occupies a substantial image footprint",
+              "Elongated geometry is consistent with a crack-like defect"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.0768
+    },
+    {
+      "image": "0fac6baa-41ac-4381-acbb-87e56e2eb2d2.jpg",
+      "annotated_image": "0fac6baa-41ac-4381-acbb-87e56e2eb2d2_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 6,
+          "class": "D20",
+          "confidence": 0.886,
+          "bbox": [
+            31.11,
+            144.95,
+            640.0,
+            469.0
+          ],
+          "severity": {
+            "severity_score": 27.35,
+            "severity_level": "moderate",
+            "class_name": "D20",
+            "canonical_class": "D20",
+            "confidence": 0.886,
+            "bbox": [
+              31.11,
+              144.95,
+              640.0,
+              469.0
+            ],
+            "components": {
+              "class_weight": 0.45,
+              "confidence": 0.886,
+              "footprint": 1.0,
+              "shape": 0.1256,
+              "visual": 0.2627
+            },
+            "reasons": [
+              "D20 class prior contributes 0.45",
+              "High detector confidence supports the estimate",
+              "The detection occupies a substantial image footprint"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.0704
+    },
+    {
+      "image": "1aacaa66-29cf-4f20-a45d-7558c2d7c635.jpg",
+      "annotated_image": "1aacaa66-29cf-4f20-a45d-7558c2d7c635_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 1,
+          "class": "D00",
+          "confidence": 0.4326,
+          "bbox": [
+            316.89,
+            164.86,
+            354.54,
+            205.2
+          ],
+          "severity": {
+            "severity_score": 9.8,
+            "severity_level": "low",
+            "class_name": "D00",
+            "canonical_class": "D00",
+            "confidence": 0.4326,
+            "bbox": [
+              316.89,
+              164.86,
+              354.54,
+              205.2
+            ],
+            "components": {
+              "class_weight": 0.5,
+              "confidence": 0.4326,
+              "footprint": 0.1406,
+              "shape": 0.0102,
+              "visual": 0.0498
+            },
+            "reasons": [
+              "D00 class prior contributes 0.50"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.0647
+    },
+    {
+      "image": "1d2f0c6f-e352-4b35-93bc-9e1ff7c652cb.jpg",
+      "annotated_image": "1d2f0c6f-e352-4b35-93bc-9e1ff7c652cb_annotated.jpg",
+      "detections": [],
+      "inference_seconds": 0.0478
+    },
+    {
+      "image": "1f9481cd-da3b-4fc2-8aa4-6a1037f037c6.jpg",
+      "annotated_image": "1f9481cd-da3b-4fc2-8aa4-6a1037f037c6_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 6,
+          "class": "D20",
+          "confidence": 0.7786,
+          "bbox": [
+            301.7,
+            124.06,
+            596.37,
+            469.0
+          ],
+          "severity": {
+            "severity_score": 25.68,
+            "severity_level": "moderate",
+            "class_name": "D20",
+            "canonical_class": "D20",
+            "confidence": 0.7786,
+            "bbox": [
+              301.7,
+              124.06,
+              596.37,
+              469.0
+            ],
+            "components": {
+              "class_weight": 0.45,
+              "confidence": 0.7786,
+              "footprint": 1.0,
+              "shape": 0.0244,
+              "visual": 0.3147
+            },
+            "reasons": [
+              "D20 class prior contributes 0.45",
+              "High detector confidence supports the estimate",
+              "The detection occupies a substantial image footprint"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        },
+        {
+          "class_id": 4,
+          "class": "D10",
+          "confidence": 0.3181,
+          "bbox": [
+            150.2,
+            188.31,
+            300.74,
+            217.16
+          ],
+          "severity": {
+            "severity_score": 26.51,
+            "severity_level": "moderate",
+            "class_name": "D10",
+            "canonical_class": "D10",
+            "confidence": 0.3181,
+            "bbox": [
+              150.2,
+              188.31,
+              300.74,
+              217.16
+            ],
+            "components": {
+              "class_weight": 0.85,
+              "confidence": 0.3181,
+              "footprint": 0.2405,
+              "shape": 0.6028,
+              "visual": 0.2069
+            },
+            "reasons": [
+              "D10 class prior contributes 0.85",
+              "Low detector confidence reduces the estimate",
+              "Elongated geometry is consistent with a crack-like defect"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.0762
+    },
+    {
+      "image": "215a072f-3ee2-4eab-ad58-9ca4abdb89e5.jpg",
+      "annotated_image": "215a072f-3ee2-4eab-ad58-9ca4abdb89e5_annotated.jpg",
+      "detections": [],
+      "inference_seconds": 0.0595
+    },
+    {
+      "image": "3bf22ee5-fe69-4eb3-ad89-417c85bf83c1.jpg",
+      "annotated_image": "3bf22ee5-fe69-4eb3-ad89-417c85bf83c1_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 6,
+          "class": "D20",
+          "confidence": 0.735,
+          "bbox": [
+            95.3,
+            184.8,
+            629.7,
+            360.0
+          ],
+          "severity": {
+            "severity_score": 26.09,
+            "severity_level": "moderate",
+            "class_name": "D20",
+            "canonical_class": "D20",
+            "confidence": 0.735,
+            "bbox": [
+              95.3,
+              184.8,
+              629.7,
+              360.0
+            ],
+            "components": {
+              "class_weight": 0.45,
+              "confidence": 0.735,
+              "footprint": 1.0,
+              "shape": 0.2929,
+              "visual": 0.2621
+            },
+            "reasons": [
+              "D20 class prior contributes 0.45",
+              "The detection occupies a substantial image footprint"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.057
+    },
+    {
+      "image": "3cde2d45-4be1-497a-ba57-d8e1c752d14d.jpg",
+      "annotated_image": "3cde2d45-4be1-497a-ba57-d8e1c752d14d_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 1,
+          "class": "D00",
+          "confidence": 0.5292,
+          "bbox": [
+            146.08,
+            167.18,
+            207.02,
+            217.55
+          ],
+          "severity": {
+            "severity_score": 13.26,
+            "severity_level": "low",
+            "class_name": "D00",
+            "canonical_class": "D00",
+            "confidence": 0.5292,
+            "bbox": [
+              146.08,
+              167.18,
+              207.02,
+              217.55
+            ],
+            "components": {
+              "class_weight": 0.5,
+              "confidence": 0.5292,
+              "footprint": 0.2966,
+              "shape": 0.03,
+              "visual": 0.054
+            },
+            "reasons": [
+              "D00 class prior contributes 0.50"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        },
+        {
+          "class_id": 6,
+          "class": "D20",
+          "confidence": 0.4286,
+          "bbox": [
+            452.55,
+            164.78,
+            586.62,
+            218.0
+          ],
+          "severity": {
+            "severity_score": 14.67,
+            "severity_level": "low",
+            "class_name": "D20",
+            "canonical_class": "D20",
+            "confidence": 0.4286,
+            "bbox": [
+              452.55,
+              164.78,
+              586.62,
+              218.0
+            ],
+            "components": {
+              "class_weight": 0.45,
+              "confidence": 0.4286,
+              "footprint": 0.4523,
+              "shape": 0.217,
+              "visual": 0.1764
+            },
+            "reasons": [
+              "D20 class prior contributes 0.45"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.0604
+    },
+    {
+      "image": "4a882b36-3090-4f62-91dc-3815794e63e7.jpg",
+      "annotated_image": "4a882b36-3090-4f62-91dc-3815794e63e7_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 1,
+          "class": "D00",
+          "confidence": 0.3849,
+          "bbox": [
+            390.79,
+            277.38,
+            448.22,
+            464.31
+          ],
+          "severity": {
+            "severity_score": 13.36,
+            "severity_level": "low",
+            "class_name": "D00",
+            "canonical_class": "D00",
+            "confidence": 0.3849,
+            "bbox": [
+              390.79,
+              277.38,
+              448.22,
+              464.31
+            ],
+            "components": {
+              "class_weight": 0.5,
+              "confidence": 0.3849,
+              "footprint": 0.3782,
+              "shape": 0.3222,
+              "visual": 0.0284
+            },
+            "reasons": [
+              "D00 class prior contributes 0.50",
+              "Low detector confidence reduces the estimate"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        },
+        {
+          "class_id": 6,
+          "class": "D20",
+          "confidence": 0.3297,
+          "bbox": [
+            4.32,
+            92.04,
+            452.22,
+            424.62
+          ],
+          "severity": {
+            "severity_score": 17.58,
+            "severity_level": "low",
+            "class_name": "D20",
+            "canonical_class": "D20",
+            "confidence": 0.3297,
+            "bbox": [
+              4.32,
+              92.04,
+              452.22,
+              424.62
+            ],
+            "components": {
+              "class_weight": 0.45,
+              "confidence": 0.3297,
+              "footprint": 1.0,
+              "shape": 0.0495,
+              "visual": 0.2264
+            },
+            "reasons": [
+              "D20 class prior contributes 0.45",
+              "Low detector confidence reduces the estimate",
+              "The detection occupies a substantial image footprint"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.0779
+    },
+    {
+      "image": "5a456087-5777-446a-9a41-d13b2f21153b.jpg",
+      "annotated_image": "5a456087-5777-446a-9a41-d13b2f21153b_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 4,
+          "class": "D10",
+          "confidence": 0.3537,
+          "bbox": [
+            61.92,
+            312.93,
+            637.95,
+            415.0
+          ],
+          "severity": {
+            "severity_score": 37.78,
+            "severity_level": "moderate",
+            "class_name": "D10",
+            "canonical_class": "D10",
+            "confidence": 0.3537,
+            "bbox": [
+              61.92,
+              312.93,
+              637.95,
+              415.0
+            ],
+            "components": {
+              "class_weight": 0.85,
+              "confidence": 0.3537,
+              "footprint": 0.8852,
+              "shape": 0.6633,
+              "visual": 0.1472
+            },
+            "reasons": [
+              "D10 class prior contributes 0.85",
+              "Low detector confidence reduces the estimate",
+              "The detection occupies a substantial image footprint",
+              "Elongated geometry is consistent with a crack-like defect"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.065
+    },
+    {
+      "image": "7d8408b1-3f66-43a5-8117-8821af7bff28.jpg",
+      "annotated_image": "7d8408b1-3f66-43a5-8117-8821af7bff28_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 6,
+          "class": "D20",
+          "confidence": 0.6866,
+          "bbox": [
+            312.55,
+            164.86,
+            639.83,
+            469.0
+          ],
+          "severity": {
+            "severity_score": 23.85,
+            "severity_level": "low",
+            "class_name": "D20",
+            "canonical_class": "D20",
+            "confidence": 0.6866,
+            "bbox": [
+              312.55,
+              164.86,
+              639.83,
+              469.0
+            ],
+            "components": {
+              "class_weight": 0.45,
+              "confidence": 0.6866,
+              "footprint": 1.0,
+              "shape": 0.0109,
+              "visual": 0.2933
+            },
+            "reasons": [
+              "D20 class prior contributes 0.45",
+              "The detection occupies a substantial image footprint"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        },
+        {
+          "class_id": 10,
+          "class": "D50",
+          "confidence": 0.3892,
+          "bbox": [
+            496.34,
+            125.42,
+            549.91,
+            147.3
+          ],
+          "severity": {
+            "severity_score": 12.18,
+            "severity_level": "low",
+            "class_name": "D50",
+            "canonical_class": "D50",
+            "confidence": 0.3892,
+            "bbox": [
+              496.34,
+              125.42,
+              549.91,
+              147.3
+            ],
+            "components": {
+              "class_weight": 0.4,
+              "confidence": 0.3892,
+              "footprint": 0.125,
+              "shape": 0.4086,
+              "visual": 0.2731
+            },
+            "reasons": [
+              "D50 class prior contributes 0.40",
+              "Low detector confidence reduces the estimate",
+              "Fallback applied: Unknown defect class 'D50'; fallback class weight used"
+            ],
+            "warnings": [
+              "Unknown defect class 'D50'; fallback class weight used"
+            ],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.0804
+    },
+    {
+      "image": "7dc15c47-256a-4e3d-87d1-c7f6e33e11a8.jpg",
+      "annotated_image": "7dc15c47-256a-4e3d-87d1-c7f6e33e11a8_annotated.jpg",
+      "detections": [],
+      "inference_seconds": 0.0507
+    },
+    {
+      "image": "7f98ef30-6209-48a4-8d60-b45fa6a6e8bf.jpg",
+      "annotated_image": "7f98ef30-6209-48a4-8d60-b45fa6a6e8bf_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 6,
+          "class": "D20",
+          "confidence": 0.5283,
+          "bbox": [
+            330.04,
+            93.82,
+            639.71,
+            462.25
+          ],
+          "severity": {
+            "severity_score": 23.12,
+            "severity_level": "low",
+            "class_name": "D20",
+            "canonical_class": "D20",
+            "confidence": 0.5283,
+            "bbox": [
+              330.04,
+              93.82,
+              639.71,
+              462.25
+            ],
+            "components": {
+              "class_weight": 0.45,
+              "confidence": 0.5283,
+              "footprint": 1.0,
+              "shape": 0.0271,
+              "visual": 0.4162
+            },
+            "reasons": [
+              "D20 class prior contributes 0.45",
+              "The detection occupies a substantial image footprint"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        },
+        {
+          "class_id": 6,
+          "class": "D20",
+          "confidence": 0.3933,
+          "bbox": [
+            58.6,
+            92.43,
+            639.23,
+            468.68
+          ],
+          "severity": {
+            "severity_score": 21.61,
+            "severity_level": "low",
+            "class_name": "D20",
+            "canonical_class": "D20",
+            "confidence": 0.3933,
+            "bbox": [
+              58.6,
+              92.43,
+              639.23,
+              468.68
+            ],
+            "components": {
+              "class_weight": 0.45,
+              "confidence": 0.3933,
+              "footprint": 1.0,
+              "shape": 0.0776,
+              "visual": 0.4361
+            },
+            "reasons": [
+              "D20 class prior contributes 0.45",
+              "Low detector confidence reduces the estimate",
+              "The detection occupies a substantial image footprint"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.0791
+    },
+    {
+      "image": "8f637e36-9868-44ab-88cb-c998defd8c84.jpg",
+      "annotated_image": "8f637e36-9868-44ab-88cb-c998defd8c84_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 7,
+          "class": "D40",
+          "confidence": 0.4222,
+          "bbox": [
+            243.53,
+            265.88,
+            285.66,
+            288.66
+          ],
+          "severity": {
+            "severity_score": 34.98,
+            "severity_level": "moderate",
+            "class_name": "D40",
+            "canonical_class": "D40",
+            "confidence": 0.4222,
+            "bbox": [
+              243.53,
+              265.88,
+              285.66,
+              288.66
+            ],
+            "components": {
+              "class_weight": 1.0,
+              "confidence": 0.4222,
+              "footprint": 0.1291,
+              "shape": 0.5408,
+              "visual": 0.3171
+            },
+            "reasons": [
+              "D40 class prior contributes 1.00"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        },
+        {
+          "class_id": 7,
+          "class": "D40",
+          "confidence": 0.3234,
+          "bbox": [
+            113.71,
+            299.2,
+            164.1,
+            329.45
+          ],
+          "severity": {
+            "severity_score": 28.28,
+            "severity_level": "moderate",
+            "class_name": "D40",
+            "canonical_class": "D40",
+            "confidence": 0.3234,
+            "bbox": [
+              113.71,
+              299.2,
+              164.1,
+              329.45
+            ],
+            "components": {
+              "class_weight": 1.0,
+              "confidence": 0.3234,
+              "footprint": 0.1627,
+              "shape": 0.6004,
+              "visual": 0.1568
+            },
+            "reasons": [
+              "D40 class prior contributes 1.00",
+              "Low detector confidence reduces the estimate"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.0624
+    }
+  ],
+  "totals": {
+    "images": 18,
+    "images_with_detections": 14,
+    "detections": 22,
+    "classes": {
+      "D00": 7,
+      "D20": 9,
+      "D10": 3,
+      "D50": 1,
+      "D40": 2
+    },
+    "severity_levels": {
+      "low": 13,
+      "moderate": 9
+    },
+    "severity_score_average": 21.74,
+    "severity_score_max": 37.78
+  }
+}

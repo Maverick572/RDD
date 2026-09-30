@@ -1,0 +1,426 @@
+{
+  "model": "best.pt",
+  "source": "uploads",
+  "images": [
+    {
+      "image": "b595d020-215f-11f1-b539-43e5d7f861d2.jpg",
+      "annotated_image": "b595d020-215f-11f1-b539-43e5d7f861d2_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 7,
+          "class": "D40",
+          "confidence": 0.4854,
+          "bbox": [
+            1729.74,
+            1331.37,
+            2155.04,
+            1570.22
+          ],
+          "severity": {
+            "severity_score": 50.34,
+            "severity_level": "high",
+            "class_name": "D40",
+            "canonical_class": "D40",
+            "confidence": 0.4854,
+            "bbox": [
+              1729.74,
+              1331.37,
+              2155.04,
+              1570.22
+            ],
+            "components": {
+              "class_weight": 1.0,
+              "confidence": 0.4854,
+              "footprint": 0.2108,
+              "shape": 0.5616,
+              "visual": 0.6903
+            },
+            "reasons": [
+              "D40 class prior contributes 1.00",
+              "The crop contains strong luminance or edge variation"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 2.6514
+    },
+    {
+      "image": "images (1).jpeg",
+      "annotated_image": "images (1)_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 7,
+          "class": "D40",
+          "confidence": 0.3285,
+          "bbox": [
+            318.55,
+            201.83,
+            435.43,
+            253.57
+          ],
+          "severity": {
+            "severity_score": 38.97,
+            "severity_level": "moderate",
+            "class_name": "D40",
+            "canonical_class": "D40",
+            "confidence": 0.3285,
+            "bbox": [
+              318.55,
+              201.83,
+              435.43,
+              253.57
+            ],
+            "components": {
+              "class_weight": 1.0,
+              "confidence": 0.3285,
+              "footprint": 0.2811,
+              "shape": 0.4427,
+              "visual": 0.5071
+            },
+            "reasons": [
+              "D40 class prior contributes 1.00",
+              "Low detector confidence reduces the estimate"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.1002
+    },
+    {
+      "image": "images.jpeg",
+      "annotated_image": "images_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 7,
+          "class": "D40",
+          "confidence": 0.2529,
+          "bbox": [
+            390.94,
+            170.33,
+            469.97,
+            232.35
+          ],
+          "severity": {
+            "severity_score": 42.69,
+            "severity_level": "moderate",
+            "class_name": "D40",
+            "canonical_class": "D40",
+            "confidence": 0.2529,
+            "bbox": [
+              390.94,
+              170.33,
+              469.97,
+              232.35
+            ],
+            "components": {
+              "class_weight": 1.0,
+              "confidence": 0.2529,
+              "footprint": 0.2529,
+              "shape": 0.7848,
+              "visual": 0.5671
+            },
+            "reasons": [
+              "D40 class prior contributes 1.00",
+              "Low detector confidence reduces the estimate"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.0661
+    },
+    {
+      "image": "istockphoto-465926255-612x612.jpg",
+      "annotated_image": "istockphoto-465926255-612x612_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 7,
+          "class": "D40",
+          "confidence": 0.708,
+          "bbox": [
+            392.54,
+            282.85,
+            478.52,
+            331.36
+          ],
+          "severity": {
+            "severity_score": 55.97,
+            "severity_level": "high",
+            "class_name": "D40",
+            "canonical_class": "D40",
+            "confidence": 0.708,
+            "bbox": [
+              392.54,
+              282.85,
+              478.52,
+              331.36
+            ],
+            "components": {
+              "class_weight": 1.0,
+              "confidence": 0.708,
+              "footprint": 0.2585,
+              "shape": 0.5641,
+              "visual": 0.5852
+            },
+            "reasons": [
+              "D40 class prior contributes 1.00"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        },
+        {
+          "class_id": 7,
+          "class": "D40",
+          "confidence": 0.6603,
+          "bbox": [
+            483.91,
+            330.06,
+            552.6,
+            381.38
+          ],
+          "severity": {
+            "severity_score": 56.61,
+            "severity_level": "high",
+            "class_name": "D40",
+            "canonical_class": "D40",
+            "confidence": 0.6603,
+            "bbox": [
+              483.91,
+              330.06,
+              552.6,
+              381.38
+            ],
+            "components": {
+              "class_weight": 1.0,
+              "confidence": 0.6603,
+              "footprint": 0.2376,
+              "shape": 0.7471,
+              "visual": 0.5846
+            },
+            "reasons": [
+              "D40 class prior contributes 1.00"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        },
+        {
+          "class_id": 7,
+          "class": "D40",
+          "confidence": 0.5144,
+          "bbox": [
+            114.71,
+            222.73,
+            200.26,
+            275.41
+          ],
+          "severity": {
+            "severity_score": 52.72,
+            "severity_level": "high",
+            "class_name": "D40",
+            "canonical_class": "D40",
+            "confidence": 0.5144,
+            "bbox": [
+              114.71,
+              222.73,
+              200.26,
+              275.41
+            ],
+            "components": {
+              "class_weight": 1.0,
+              "confidence": 0.5144,
+              "footprint": 0.2687,
+              "shape": 0.6157,
+              "visual": 0.6701
+            },
+            "reasons": [
+              "D40 class prior contributes 1.00",
+              "The crop contains strong luminance or edge variation"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        },
+        {
+          "class_id": 7,
+          "class": "D40",
+          "confidence": 0.4076,
+          "bbox": [
+            229.58,
+            231.16,
+            274.35,
+            253.44
+          ],
+          "severity": {
+            "severity_score": 41.22,
+            "severity_level": "moderate",
+            "class_name": "D40",
+            "canonical_class": "D40",
+            "confidence": 0.4076,
+            "bbox": [
+              229.58,
+              231.16,
+              274.35,
+              253.44
+            ],
+            "components": {
+              "class_weight": 1.0,
+              "confidence": 0.4076,
+              "footprint": 0.1264,
+              "shape": 0.4975,
+              "visual": 0.5653
+            },
+            "reasons": [
+              "D40 class prior contributes 1.00"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        },
+        {
+          "class_id": 7,
+          "class": "D40",
+          "confidence": 0.297,
+          "bbox": [
+            494.21,
+            303.75,
+            541.38,
+            327.27
+          ],
+          "severity": {
+            "severity_score": 38.75,
+            "severity_level": "moderate",
+            "class_name": "D40",
+            "canonical_class": "D40",
+            "confidence": 0.297,
+            "bbox": [
+              494.21,
+              303.75,
+              541.38,
+              327.27
+            ],
+            "components": {
+              "class_weight": 1.0,
+              "confidence": 0.297,
+              "footprint": 0.1333,
+              "shape": 0.4985,
+              "visual": 0.6072
+            },
+            "reasons": [
+              "D40 class prior contributes 1.00",
+              "Low detector confidence reduces the estimate"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        },
+        {
+          "class_id": 7,
+          "class": "D40",
+          "confidence": 0.2608,
+          "bbox": [
+            95.14,
+            190.87,
+            152.4,
+            218.23
+          ],
+          "severity": {
+            "severity_score": 39.95,
+            "severity_level": "moderate",
+            "class_name": "D40",
+            "canonical_class": "D40",
+            "confidence": 0.2608,
+            "bbox": [
+              95.14,
+              190.87,
+              152.4,
+              218.23
+            ],
+            "components": {
+              "class_weight": 1.0,
+              "confidence": 0.2608,
+              "footprint": 0.1584,
+              "shape": 0.4778,
+              "visual": 0.683
+            },
+            "reasons": [
+              "D40 class prior contributes 1.00",
+              "Low detector confidence reduces the estimate",
+              "The crop contains strong luminance or edge variation"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.1366
+    },
+    {
+      "image": "Newport_Whitepit_Lane_pot_hole.JPG",
+      "annotated_image": "Newport_Whitepit_Lane_pot_hole_annotated.jpg",
+      "detections": [
+        {
+          "class_id": 6,
+          "class": "D20",
+          "confidence": 0.3637,
+          "bbox": [
+            5.65,
+            108.98,
+            258.17,
+            193.55
+          ],
+          "severity": {
+            "severity_score": 24.4,
+            "severity_level": "low",
+            "class_name": "D20",
+            "canonical_class": "D20",
+            "confidence": 0.3637,
+            "bbox": [
+              5.65,
+              108.98,
+              258.17,
+              193.55
+            ],
+            "components": {
+              "class_weight": 0.45,
+              "confidence": 0.3637,
+              "footprint": 1.0,
+              "shape": 0.2837,
+              "visual": 0.5748
+            },
+            "reasons": [
+              "D20 class prior contributes 0.45",
+              "Low detector confidence reduces the estimate",
+              "The detection occupies a substantial image footprint"
+            ],
+            "warnings": [],
+            "algorithm_version": "visual-severity-v1"
+          }
+        }
+      ],
+      "inference_seconds": 0.0964
+    }
+  ],
+  "totals": {
+    "images": 5,
+    "images_with_detections": 5,
+    "detections": 10,
+    "classes": {
+      "D40": 9,
+      "D20": 1
+    },
+    "severity_levels": {
+      "high": 4,
+      "moderate": 5,
+      "low": 1
+    },
+    "severity_score_average": 44.16,
+    "severity_score_max": 56.61
+  }
+}

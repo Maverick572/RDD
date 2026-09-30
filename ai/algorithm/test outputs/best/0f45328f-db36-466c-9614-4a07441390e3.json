@@ -1,0 +1,82 @@
+{
+  "image": "0f45328f-db36-466c-9614-4a07441390e3.jpg",
+  "annotated_image": "0f45328f-db36-466c-9614-4a07441390e3_annotated.jpg",
+  "detections": [
+    {
+      "class_id": 1,
+      "class": "D00",
+      "confidence": 0.4897,
+      "bbox": [
+        462.25,
+        175.56,
+        540.38,
+        248.43
+      ],
+      "severity": {
+        "severity_score": 12.93,
+        "severity_level": "low",
+        "class_name": "D00",
+        "canonical_class": "D00",
+        "confidence": 0.4897,
+        "bbox": [
+          462.25,
+          175.56,
+          540.38,
+          248.43
+        ],
+        "components": {
+          "class_weight": 0.5,
+          "confidence": 0.4897,
+          "footprint": 0.2754,
+          "shape": 0.0103,
+          "visual": 0.1021
+        },
+        "reasons": [
+          "D00 class prior contributes 0.50"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    },
+    {
+      "class_id": 4,
+      "class": "D10",
+      "confidence": 0.2949,
+      "bbox": [
+        50.2,
+        214.22,
+        574.55,
+        267.86
+      ],
+      "severity": {
+        "severity_score": 36.69,
+        "severity_level": "moderate",
+        "class_name": "D10",
+        "canonical_class": "D10",
+        "confidence": 0.2949,
+        "bbox": [
+          50.2,
+          214.22,
+          574.55,
+          267.86
+        ],
+        "components": {
+          "class_weight": 0.85,
+          "confidence": 0.2949,
+          "footprint": 0.6122,
+          "shape": 1.0,
+          "visual": 0.1866
+        },
+        "reasons": [
+          "D10 class prior contributes 0.85",
+          "Low detector confidence reduces the estimate",
+          "The detection occupies a substantial image footprint",
+          "Elongated geometry is consistent with a crack-like defect"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    }
+  ],
+  "inference_seconds": 0.0768
+}

@@ -1,0 +1,44 @@
+{
+  "image": "b595d020-215f-11f1-b539-43e5d7f861d2.jpg",
+  "annotated_image": "b595d020-215f-11f1-b539-43e5d7f861d2_annotated.jpg",
+  "detections": [
+    {
+      "class_id": 7,
+      "class": "D40",
+      "confidence": 0.4854,
+      "bbox": [
+        1729.74,
+        1331.37,
+        2155.04,
+        1570.22
+      ],
+      "severity": {
+        "severity_score": 50.34,
+        "severity_level": "high",
+        "class_name": "D40",
+        "canonical_class": "D40",
+        "confidence": 0.4854,
+        "bbox": [
+          1729.74,
+          1331.37,
+          2155.04,
+          1570.22
+        ],
+        "components": {
+          "class_weight": 1.0,
+          "confidence": 0.4854,
+          "footprint": 0.2108,
+          "shape": 0.5616,
+          "visual": 0.6903
+        },
+        "reasons": [
+          "D40 class prior contributes 1.00",
+          "The crop contains strong luminance or edge variation"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    }
+  ],
+  "inference_seconds": 2.6514
+}

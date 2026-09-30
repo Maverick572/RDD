@@ -1,0 +1,83 @@
+{
+  "image": "1f9481cd-da3b-4fc2-8aa4-6a1037f037c6.jpg",
+  "annotated_image": "1f9481cd-da3b-4fc2-8aa4-6a1037f037c6_annotated.jpg",
+  "detections": [
+    {
+      "class_id": 6,
+      "class": "D20",
+      "confidence": 0.7786,
+      "bbox": [
+        301.7,
+        124.06,
+        596.37,
+        469.0
+      ],
+      "severity": {
+        "severity_score": 25.68,
+        "severity_level": "moderate",
+        "class_name": "D20",
+        "canonical_class": "D20",
+        "confidence": 0.7786,
+        "bbox": [
+          301.7,
+          124.06,
+          596.37,
+          469.0
+        ],
+        "components": {
+          "class_weight": 0.45,
+          "confidence": 0.7786,
+          "footprint": 1.0,
+          "shape": 0.0244,
+          "visual": 0.3147
+        },
+        "reasons": [
+          "D20 class prior contributes 0.45",
+          "High detector confidence supports the estimate",
+          "The detection occupies a substantial image footprint"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    },
+    {
+      "class_id": 4,
+      "class": "D10",
+      "confidence": 0.3181,
+      "bbox": [
+        150.2,
+        188.31,
+        300.74,
+        217.16
+      ],
+      "severity": {
+        "severity_score": 26.51,
+        "severity_level": "moderate",
+        "class_name": "D10",
+        "canonical_class": "D10",
+        "confidence": 0.3181,
+        "bbox": [
+          150.2,
+          188.31,
+          300.74,
+          217.16
+        ],
+        "components": {
+          "class_weight": 0.85,
+          "confidence": 0.3181,
+          "footprint": 0.2405,
+          "shape": 0.6028,
+          "visual": 0.2069
+        },
+        "reasons": [
+          "D10 class prior contributes 0.85",
+          "Low detector confidence reduces the estimate",
+          "Elongated geometry is consistent with a crack-like defect"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    }
+  ],
+  "inference_seconds": 0.0762
+}

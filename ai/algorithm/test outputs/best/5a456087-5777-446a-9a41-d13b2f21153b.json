@@ -1,0 +1,46 @@
+{
+  "image": "5a456087-5777-446a-9a41-d13b2f21153b.jpg",
+  "annotated_image": "5a456087-5777-446a-9a41-d13b2f21153b_annotated.jpg",
+  "detections": [
+    {
+      "class_id": 4,
+      "class": "D10",
+      "confidence": 0.3537,
+      "bbox": [
+        61.92,
+        312.93,
+        637.95,
+        415.0
+      ],
+      "severity": {
+        "severity_score": 37.78,
+        "severity_level": "moderate",
+        "class_name": "D10",
+        "canonical_class": "D10",
+        "confidence": 0.3537,
+        "bbox": [
+          61.92,
+          312.93,
+          637.95,
+          415.0
+        ],
+        "components": {
+          "class_weight": 0.85,
+          "confidence": 0.3537,
+          "footprint": 0.8852,
+          "shape": 0.6633,
+          "visual": 0.1472
+        },
+        "reasons": [
+          "D10 class prior contributes 0.85",
+          "Low detector confidence reduces the estimate",
+          "The detection occupies a substantial image footprint",
+          "Elongated geometry is consistent with a crack-like defect"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    }
+  ],
+  "inference_seconds": 0.065
+}

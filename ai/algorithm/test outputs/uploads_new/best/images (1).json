@@ -1,0 +1,44 @@
+{
+  "image": "images (1).jpeg",
+  "annotated_image": "images (1)_annotated.jpg",
+  "detections": [
+    {
+      "class_id": 7,
+      "class": "D40",
+      "confidence": 0.3285,
+      "bbox": [
+        318.55,
+        201.83,
+        435.43,
+        253.57
+      ],
+      "severity": {
+        "severity_score": 38.97,
+        "severity_level": "moderate",
+        "class_name": "D40",
+        "canonical_class": "D40",
+        "confidence": 0.3285,
+        "bbox": [
+          318.55,
+          201.83,
+          435.43,
+          253.57
+        ],
+        "components": {
+          "class_weight": 1.0,
+          "confidence": 0.3285,
+          "footprint": 0.2811,
+          "shape": 0.4427,
+          "visual": 0.5071
+        },
+        "reasons": [
+          "D40 class prior contributes 1.00",
+          "Low detector confidence reduces the estimate"
+        ],
+        "warnings": [],
+        "algorithm_version": "visual-severity-v1"
+      }
+    }
+  ],
+  "inference_seconds": 0.1002
+}
