@@ -8,6 +8,7 @@ from backend.inference import detect_road_damage
 from backend.find_nearest import find_nearest_road
 from backend.supabase_storage import upload_image
 from backend.severity import calculate_severity
+from backend.calculate_rhi import calculate_rhi
 
 import psycopg2
 import os
@@ -144,10 +145,13 @@ async def _detect_impl(
                 "severity": severity,
             })
 
-        # 9. Commit
+        # 9. Recalculate RHI from all defects on this road in this transaction
+        road["rhi"] = calculate_rhi(road["id"], cur)
+
+        # 10. Commit
         conn.commit()
 
-        # 10. Return response
+        # 11. Return response
         return {
             "filename": file.filename,
             "location": location,

@@ -549,7 +549,7 @@ function RoadsPage() {
                     </span>
                     {selectedRoad.rhi !== null && (
                       <span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono font-bold text-primary text-[10px]">
-                        RHI {selectedRoad.rhi}
+                        RHI {selectedRoad.rhi.toFixed(2)}
                       </span>
                     )}
                   </div>
@@ -691,7 +691,7 @@ function RoadsPage() {
                                     className="font-mono text-sm font-bold"
                                     style={{ color: RHI_HEX[rhiBand(road.rhi)] }}
                                   >
-                                    {road.rhi}
+                                    {road.rhi.toFixed(2)}
                                   </span>
                                   <span className="text-[10px] text-muted-foreground font-mono">
                                     /100
@@ -758,7 +758,7 @@ function RoadsPage() {
                           className="font-mono font-bold"
                           style={{ color: RHI_HEX[rhiBand(selectedRoad.rhi)] }}
                         >
-                          {selectedRoad.rhi}/100 ({rhiBand(selectedRoad.rhi).toUpperCase()})
+                          {selectedRoad.rhi.toFixed(2)}/100 ({rhiBand(selectedRoad.rhi).toUpperCase()})
                         </span>
                       ) : (
                         <span className="font-mono text-muted-foreground italic">
