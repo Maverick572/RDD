@@ -649,13 +649,11 @@ function MediaAnalysisPage() {
                       alt="Annotated Defect Result"
                       className="h-full w-full object-contain"
                       loading="eager"
-                      onError={(e) => {
-                        console.warn("Failed loading annotated image URL:", detectionResult.annotated_image);
-                        const target = e.target as HTMLImageElement;
-                        const filename = detectionResult.annotated_image.split("/").pop() || "";
-                        if (!target.src.includes("localhost:8000/outputs")) {
-                          target.src = `http://localhost:8000/outputs/${filename.replace(/^[a-f0-9]+_/, "")}`;
-                        }
+                      onError={() => {
+                        console.warn(
+                          "Failed loading annotated image URL:",
+                          detectionResult.annotated_image,
+                        );
                       }}
                     />
 

@@ -1,10 +1,13 @@
 from fastapi import APIRouter, UploadFile, File, Query
+import logging
 
 from backend.storage import save_upload
+from backend.cleanup import cleanup_directories
 from backend.metadata import extract_gps
 from backend.inference import detect_road_damage
 from backend.find_nearest import find_nearest_road
 from backend.supabase_storage import upload_image
+from backend.severity import calculate_severity
 
 import psycopg2
 import os
@@ -16,6 +19,7 @@ load_dotenv(override=True)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/detect")
@@ -23,6 +27,20 @@ async def detect(
     file: UploadFile = File(...),
     lat: float | None = Query(None),
     lng: float | None = Query(None),
+):
+    try:
+        return await _detect_impl(file, lat, lng)
+    finally:
+        try:
+            cleanup_directories()
+        except OSError:
+            logger.exception("Failed to clean uploads and outputs after detection")
+
+
+async def _detect_impl(
+    file: UploadFile,
+    lat: float | None,
+    lng: float | None,
 ):
     # 1. Save uploaded image temporarily
     image_path = await save_upload(file)
@@ -70,14 +88,16 @@ async def detect(
 
         # 8. Insert detected defects
         for det in detection["detections"]:
-            confidence = det["confidence"]
 
-            if confidence >= 0.80:
-                severity = "high"
-            elif confidence >= 0.50:
-                severity = "medium"
-            else:
-                severity = "low"
+            # Calculate visual severity score
+            severity_result = calculate_severity(
+                image_path=image_path,
+                detection=det,
+                image_width=detection["image_width"],
+                image_height=detection["image_height"],
+            )
+
+            severity = severity_result["severity_score"]
 
             cur.execute(
                 """
@@ -107,7 +127,7 @@ async def detect(
                 (
                     road["id"],
                     det["class"],
-                    confidence,
+                    det["confidence"],
                     severity,
                     longitude,
                     latitude,
@@ -120,7 +140,7 @@ async def detect(
             inserted_defects.append({
                 "id": defect_id,
                 "type": det["class"],
-                "confidence": confidence,
+                "confidence": det["confidence"],
                 "severity": severity,
             })
 
