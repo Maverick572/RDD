@@ -9,6 +9,7 @@ from backend.find_nearest import find_nearest_road
 from backend.supabase_storage import upload_image
 from backend.severity import calculate_severity
 from backend.calculate_rhi import calculate_rhi
+from backend.check_duplicate import is_duplicate_defect
 
 import psycopg2
 import os
@@ -74,20 +75,31 @@ async def _detect_impl(
     if not road:
         return {"error": "Location not found"}
 
-    # 6. Upload ONLY annotated image to Supabase Storage
-    try:
-        annotated_image_url = upload_image(detection["image"])
-    except Exception:
-        return {"error": "Image upload failed"}
-
-    # 7. Connect to database
+    # 6. Check for duplicate defects before uploading or writing anything
     conn = psycopg2.connect(DATABASE_URL)
 
     try:
         cur = conn.cursor()
-        inserted_defects = []
+
+        for det in detection["detections"]:
+            if is_duplicate_defect(
+                road["id"],
+                det["class"],
+                latitude,
+                longitude,
+                cur,
+            ):
+                return {"error": "Complaint already registered"}
+
+        # 7. Upload ONLY annotated image to Supabase Storage
+        try:
+            annotated_image_url = upload_image(detection["image"])
+        except Exception:
+            return {"error": "Image upload failed"}
 
         # 8. Insert detected defects
+        inserted_defects = []
+
         for det in detection["detections"]:
 
             # Calculate visual severity score

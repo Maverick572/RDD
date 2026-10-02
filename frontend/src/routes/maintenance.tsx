@@ -1,349 +1,682 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import React, { useEffect, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  AlertCircle,
-  ArrowUpRight,
   Calendar,
-  CalendarCheck,
-  CheckCircle2,
-  Clock,
-  DollarSign,
-  Filter,
-  HardHat,
-  Layers,
+  Loader2,
   Plus,
-  Search,
-  SlidersHorizontal,
-  Wrench,
+  Route as RouteIcon,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
-import { MaintenanceModal } from "@/components/maintenance/MaintenanceModal";
-import { PriorityBadge } from "@/components/road/RhiBadge";
-import { useAreaFilter } from "@/hooks/useAreaFilter";
-import { formatDate } from "@/lib/rhi";
-import { maintenanceService } from "@/services/maintenance.service";
-import { roadsService } from "@/services/roads.service";
-import type { MaintenanceStatus, MaintenanceTask, Priority, Road } from "@/types";
+import { RhiBadge } from "@/components/road/RhiBadge";
 
 export const Route = createFileRoute("/maintenance")({
   component: MaintenancePage,
 });
 
-function MaintenancePage() {
-  const areaFilter = useAreaFilter();
-  const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
-  const [roads, setRoads] = useState<Road[]>([]);
-  const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | MaintenanceStatus>("all");
-  const [priorityFilter, setPriorityFilter] = useState<string>("all");
-  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+const API_BASE = "http://localhost:8000";
+const MAINTENANCE_TYPES = [
+  "Pothole patching",
+  "Crack sealing",
+  "Resurfacing",
+  "Lane re-marking",
+  "Micro-surfacing",
+  "Full reconstruction",
+];
 
-  const loadData = async () => {
-    setLoading(true);
+interface Ward {
+  id: number;
+  ward_number: number;
+  node: string | null;
+  municipal_corporation: string | null;
+}
+
+interface WardRoad {
+  id: number;
+  name: string;
+  type: string;
+  rhi: number | null;
+  defect_count: number;
+  geometry: GeoJSON.Geometry | null;
+}
+
+interface MaintenanceRecord {
+  id: number;
+  road_id: number;
+  scheduled_date: string;
+  progress: number;
+  status: string;
+  maintenance_type: string;
+  road_name: string;
+  road_type: string;
+  rhi: number | null;
+  defect_count: number;
+}
+
+interface MaintenanceHistoryRecord {
+  id: number;
+  road_id: number;
+  start_date: string;
+  completed_date: string;
+  maintenance_type: string;
+  road_name: string;
+  road_type: string;
+}
+
+type MaintenanceTab = "schedule" | "manage" | "history";
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+}
+
+function MaintenancePage() {
+  const [wards, setWards] = useState<Ward[]>([]);
+  const [selectedWardNumber, setSelectedWardNumber] = useState("");
+  const [activeTab, setActiveTab] = useState<MaintenanceTab>("schedule");
+  const [roads, setRoads] = useState<WardRoad[]>([]);
+  const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>([]);
+  const [history, setHistory] = useState<MaintenanceHistoryRecord[]>([]);
+  const [loadingWards, setLoadingWards] = useState(true);
+  const [loadingContent, setLoadingContent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [scheduleRoad, setScheduleRoad] = useState<WardRoad | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [progressValues, setProgressValues] = useState<Record<number, string>>({});
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [maintenanceType, setMaintenanceType] = useState(MAINTENANCE_TYPES[0]);
+
+  const selectedWard = useMemo(
+    () => wards.find((ward) => String(ward.ward_number) === selectedWardNumber),
+    [wards, selectedWardNumber]
+  );
+
+  const loadWardData = useCallback(async (wardNumber: string) => {
+    if (!wardNumber) {
+      setRoads([]);
+      setMaintenance([]);
+      setHistory([]);
+      return;
+    }
+
+    setLoadingContent(true);
+    setError(null);
     try {
-      const [roadsData, tasksData] = await Promise.all([
-        roadsService.getRoads({
-          stateId: areaFilter.stateId,
-          districtId: areaFilter.districtId,
-          cityId: areaFilter.cityId,
-        }),
-        maintenanceService.getMaintenanceTasks(),
+      const [roadsResponse, maintenanceResponse, historyResponse] = await Promise.all([
+        fetch(`${API_BASE}/wards/${wardNumber}/roads`),
+        fetch(`${API_BASE}/wards/${wardNumber}/maintenance`),
+        fetch(`${API_BASE}/wards/${wardNumber}/maintenance/history`),
       ]);
 
-      setRoads(roadsData);
-      const roadIds = new Set(roadsData.map((r) => r.id));
-      setTasks(tasksData.filter((t) => roadIds.has(t.roadId)));
+      for (const response of [roadsResponse, maintenanceResponse, historyResponse]) {
+        if (!response.ok) {
+          throw new Error(`Failed to load ward maintenance data (${response.status})`);
+        }
+      }
+
+      const [roadsData, maintenanceData, historyData] = await Promise.all([
+        roadsResponse.json(),
+        maintenanceResponse.json(),
+        historyResponse.json(),
+      ]);
+      setRoads(roadsData.roads || []);
+      setMaintenance(maintenanceData.maintenance || []);
+      setHistory(historyData.maintenance_history || []);
+    } catch (loadError) {
+      console.error("Failed to load ward maintenance data:", loadError);
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to load ward maintenance data"
+      );
+      setRoads([]);
+      setMaintenance([]);
+      setHistory([]);
     } finally {
-      setLoading(false);
+      setLoadingContent(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, [areaFilter.stateId, areaFilter.districtId, areaFilter.cityId]);
+    fetch(`${API_BASE}/wards`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Failed to load wards (${response.status})`);
+        return response.json();
+      })
+      .then((data) => setWards(data.wards || []))
+      .catch((loadError) => {
+        console.error("Failed to load wards:", loadError);
+        setError(loadError instanceof Error ? loadError.message : "Failed to load wards");
+      })
+      .finally(() => setLoadingWards(false));
+  }, []);
 
-  const handleUpdateStatus = async (id: string, status: MaintenanceStatus) => {
-    await maintenanceService.updateMaintenanceTask(id, { status });
-    await loadData();
-  };
+  useEffect(() => {
+    void loadWardData(selectedWardNumber);
+  }, [selectedWardNumber, loadWardData]);
 
-  const handleCreateTask = async (task: Omit<MaintenanceTask, "id">) => {
-    await maintenanceService.createMaintenanceTask(task);
-    await loadData();
-  };
+  const eligibleRoads = useMemo(
+    () => {
+      const scheduledRoadIds = new Set(maintenance.map((record) => record.road_id));
+      return roads
+        .filter(
+          (road) =>
+            road.rhi !== null &&
+            road.rhi < 100 &&
+            !scheduledRoadIds.has(road.id)
+        )
+        .sort((a, b) => (a.rhi ?? 101) - (b.rhi ?? 101));
+    },
+    [roads, maintenance]
+  );
 
-  const roadMap = new Map(roads.map((r) => [r.id, r]));
+  const refreshWardData = async () => loadWardData(selectedWardNumber);
 
-  const filteredTasks = tasks.filter((t) => {
-    if (activeTab !== "all" && t.status !== activeTab) return false;
-    if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      const road = roadMap.get(t.roadId);
-      const matches =
-        t.id.toLowerCase().includes(q) ||
-        t.type.toLowerCase().includes(q) ||
-        t.contractor.toLowerCase().includes(q) ||
-        t.notes.toLowerCase().includes(q) ||
-        (road && (road.code.toLowerCase().includes(q) || road.name.toLowerCase().includes(q)));
-      if (!matches) return false;
+  const handleSchedule = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!scheduleRoad || !scheduledDate || !maintenanceType) return;
+
+    setSaving(true);
+    setScheduleError(null);
+    try {
+      const response = await fetch(`${API_BASE}/maintenance/schedule`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          road_id: scheduleRoad.id,
+          scheduled_date: new Date(scheduledDate).toISOString(),
+          maintenance_type: maintenanceType,
+        }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.detail || `Failed to schedule repair (${response.status})`);
+      }
+
+      setScheduleRoad(null);
+      setScheduledDate("");
+      await refreshWardData();
+    } catch (scheduleRequestError) {
+      console.error("Failed to schedule maintenance:", scheduleRequestError);
+      setScheduleError(
+        scheduleRequestError instanceof Error
+          ? scheduleRequestError.message
+          : "Failed to schedule repair"
+      );
+    } finally {
+      setSaving(false);
     }
-    return true;
-  });
+  };
 
-  const scheduledCount = tasks.filter((t) => t.status === "scheduled").length;
-  const pendingCount = tasks.filter((t) => t.status === "pending").length;
-  const inProgressCount = tasks.filter((t) => t.status === "in_progress").length;
-  const completedCount = tasks.filter((t) => t.status === "completed").length;
-  const totalBudgetLakh = tasks.reduce((sum, t) => sum + t.estimatedCostLakh, 0);
+  const handleUpdateProgress = async (record: MaintenanceRecord) => {
+    const progress = Number(progressValues[record.id] ?? record.progress);
+    if (!Number.isFinite(progress) || progress < 0 || progress > 100) {
+      setError("Progress must be between 0 and 100.");
+      return;
+    }
+
+    setUpdatingId(record.id);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/maintenance/${record.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: progress > 0 ? "in_progress" : record.status,
+          progress,
+        }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.detail || `Failed to update progress (${response.status})`);
+      }
+      setProgressValues((current) => {
+        const next = { ...current };
+        delete next[record.id];
+        return next;
+      });
+      await refreshWardData();
+    } catch (updateError) {
+      console.error("Failed to update maintenance progress:", updateError);
+      setError(
+        updateError instanceof Error
+          ? updateError.message
+          : "Failed to update repair progress"
+      );
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleCompleteRepair = async (record: MaintenanceRecord) => {
+    setUpdatingId(record.id);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/maintenance/${record.id}/complete`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.detail || `Failed to complete repair (${response.status})`);
+      }
+      await refreshWardData();
+    } catch (completeError) {
+      console.error("Failed to complete maintenance:", completeError);
+      setError(
+        completeError instanceof Error
+          ? completeError.message
+          : "Failed to complete repair"
+      );
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const tabs: { id: MaintenanceTab; label: string }[] = [
+    { id: "schedule", label: "Schedule Repairs" },
+    { id: "manage", label: "Manage Repairs" },
+    { id: "history", label: "View History" },
+  ];
 
   return (
     <AppShell
-      areaFilter={areaFilter}
       title="Maintenance"
-      subtitle="AI-prioritized pavement resurfacing, crack sealing & pothole patching operations"
-      actions={
-        <button
-          onClick={() => setScheduleModalOpen(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          <span>New Work Order</span>
-        </button>
-      }
+      subtitle="Prioritize, schedule, and track road repairs by ward"
     >
-      <div className="space-y-4 p-4 lg:p-6">
-        {/* KPI Metrics */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="panel p-3.5 border-l-4 border-l-amber-500">
-            <span className="label-caps">Pending & Scheduled</span>
-            <div className="mt-1 text-2xl font-bold font-mono text-amber-600">
-              {pendingCount + scheduledCount}
-            </div>
-            <div className="text-[11px] text-muted-foreground">
-              {pendingCount} awaiting approval, {scheduledCount} ready
-            </div>
-          </div>
+      <div className="space-y-5 p-4 lg:p-6">
+        <section className="panel p-4">
+          <label htmlFor="maintenance-ward" className="label-caps mb-2 block">
+            Select Ward
+          </label>
+          <select
+            id="maintenance-ward"
+            value={selectedWardNumber}
+            onChange={(event) => {
+              setSelectedWardNumber(event.target.value);
+              setActiveTab("schedule");
+              setError(null);
+            }}
+            disabled={loadingWards}
+            className="w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+          >
+            <option value="">
+              {loadingWards ? "Loading wards..." : "Choose a ward to view repairs"}
+            </option>
+            {wards.map((ward) => (
+              <option key={ward.id} value={ward.ward_number}>
+                Ward {ward.ward_number} — {ward.node || "Unknown Node"}
+              </option>
+            ))}
+          </select>
+          {!selectedWardNumber && error && (
+            <p role="alert" className="mt-3 text-sm text-rose-700">
+              {error}
+            </p>
+          )}
+        </section>
 
-          <div className="panel p-3.5 border-l-4 border-l-blue-500">
-            <span className="label-caps">In Progress Works</span>
-            <div className="mt-1 text-2xl font-bold font-mono text-blue-600">
-              {inProgressCount}
-            </div>
-            <div className="text-[11px] text-muted-foreground">
-              Active field contractors deployed
-            </div>
-          </div>
-
-          <div className="panel p-3.5 border-l-4 border-l-emerald-500">
-            <span className="label-caps">Completed Interventions</span>
-            <div className="mt-1 text-2xl font-bold font-mono text-emerald-600">
-              {completedCount}
-            </div>
-            <div className="text-[11px] text-muted-foreground">
-              Rectified in current fiscal year
-            </div>
-          </div>
-
-          <div className="panel p-3.5 border-l-4 border-l-primary">
-            <span className="label-caps">Committed Budget</span>
-            <div className="mt-1 text-2xl font-bold font-mono text-foreground">
-              ₹{totalBudgetLakh.toFixed(1)} <span className="text-sm font-normal text-muted-foreground">L</span>
-            </div>
-            <div className="text-[11px] text-muted-foreground">
-              Total expenditure across tasks
-            </div>
-          </div>
-        </div>
-
-        {/* Status Tabs and Filter Toolbar */}
-        <div className="panel p-4 space-y-3">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-border pb-3">
-            {/* Tabs */}
-            <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
-              {[
-                { id: "all", label: "All Work Orders", count: tasks.length },
-                { id: "in_progress", label: "In Progress", count: inProgressCount },
-                { id: "scheduled", label: "Scheduled", count: scheduledCount },
-                { id: "pending", label: "Pending Budget", count: pendingCount },
-                { id: "completed", label: "Completed", count: completedCount },
-              ].map((tab) => (
+        {selectedWardNumber && (
+          <>
+            <nav className="flex flex-wrap gap-2 border-b border-border pb-3" aria-label="Maintenance sections">
+              {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${activeTab === tab.id
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    }`}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`rounded-lg px-4 py-2 text-xs font-semibold transition-colors ${
+                    activeTab === tab.id
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
                 >
-                  <span>{tab.label}</span>
-                  <span className="rounded-full bg-background/20 px-1.5 py-0.2 text-[10px]">
-                    {tab.count}
-                  </span>
+                  {tab.label}
                 </button>
               ))}
+            </nav>
+
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <RouteIcon className="h-4 w-4 text-primary" />
+              Ward {selectedWard?.ward_number} — {selectedWard?.node || "Unknown Node"}
             </div>
 
-            {/* Priority Filter */}
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground cursor-pointer shrink-0"
-            >
-              <option value="all">All Priorities</option>
-              <option value="critical">Critical Priority</option>
-              <option value="high">High Priority</option>
-              <option value="medium">Medium Priority</option>
-              <option value="low">Low Priority</option>
-            </select>
-          </div>
+            {error && (
+              <div role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/5 px-4 py-3 text-sm text-rose-700">
+                {error}
+              </div>
+            )}
 
-          {/* Search */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="relative w-full max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search task ID, corridor, or contractor..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-md border border-input bg-background pl-9 pr-4 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-
-            <span className="text-xs text-muted-foreground font-mono">
-              Showing {filteredTasks.length} work orders
-            </span>
-          </div>
-        </div>
-
-        {/* Tasks Table */}
-        <div className="panel overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border bg-muted/40 text-[11px] font-semibold text-muted-foreground uppercase">
-                <tr>
-                  <th className="px-4 py-3">Task ID / Type</th>
-                  <th className="px-4 py-3">Corridor & Chainage</th>
-                  <th className="px-4 py-3">Priority</th>
-                  <th className="px-4 py-3">Target Date</th>
-                  <th className="px-4 py-3">Contractor</th>
-                  <th className="px-4 py-3">Est. Budget</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Update Workflow</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {filteredTasks.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-8 text-center text-muted-foreground">
-                      No maintenance work orders found for selected filters.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredTasks.map((task) => {
-                    const road = roadMap.get(task.roadId);
-                    return (
-                      <tr key={task.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-3">
-                          <span className="font-mono font-bold text-foreground block">
-                            {task.id}
-                          </span>
-                          <span className="font-semibold text-foreground text-xs">
-                            {task.type}
-                          </span>
-                        </td>
-
-                        <td className="px-4 py-3">
-                          <span className="font-mono font-bold text-foreground">
-                            {road?.code || task.roadId}
-                          </span>
-                          <span className="text-muted-foreground text-[11px] block">
-                            Ch. {task.chainageFrom} → {task.chainageTo} km • {road?.name}
-                          </span>
-                        </td>
-
-                        <td className="px-4 py-3">
-                          <PriorityBadge priority={task.priority} />
-                        </td>
-
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {formatDate(task.scheduledDate)}
-                          {task.completedDate && (
-                            <span className="block text-[10px] text-emerald-600 font-medium">
-                              Done: {formatDate(task.completedDate)}
-                            </span>
+            {loadingContent ? (
+              <div className="panel flex items-center justify-center gap-2 p-12 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading ward maintenance records...
+              </div>
+            ) : (
+              <>
+                {activeTab === "schedule" && (
+                  <section className="panel overflow-hidden">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+                      <div>
+                        <h2 className="text-sm font-semibold text-foreground">Roads Requiring Repair</h2>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Roads with RHI below 100, ordered from lowest health score.
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-mono font-semibold text-muted-foreground">
+                        {eligibleRoads.length} roads
+                      </span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="border-b border-border bg-muted/40 text-[10px] font-semibold uppercase text-muted-foreground">
+                          <tr>
+                            <th className="px-4 py-3">ID</th>
+                            <th className="px-4 py-3">Corridor / Road Name</th>
+                            <th className="px-4 py-3">Type / Class</th>
+                            <th className="px-4 py-3">Health Index (RHI)</th>
+                            <th className="px-4 py-3">Defect Count</th>
+                            <th className="px-4 py-3">Condition Status</th>
+                            <th className="px-4 py-3 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/60">
+                          {eligibleRoads.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
+                                No roads with RHI below 100 were found in this ward.
+                              </td>
+                            </tr>
+                          ) : (
+                            eligibleRoads.map((road) => (
+                              <tr key={road.id} className="hover:bg-muted/30">
+                                <td className="px-4 py-3 font-mono font-bold">#{road.id}</td>
+                                <td className="px-4 py-3">
+                                  <span className="block font-semibold text-foreground">{road.name}</span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    Ward #{selectedWard?.ward_number} • {selectedWard?.node || "Navi Mumbai"}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 capitalize">{road.type}</td>
+                                <td className="px-4 py-3 font-mono font-bold text-rose-600">
+                                  {road.rhi?.toFixed(2)} /100
+                                </td>
+                                <td className="px-4 py-3 font-mono font-semibold">{road.defect_count}</td>
+                                <td className="px-4 py-3">
+                                  {road.rhi !== null && (
+                                    <RhiBadge rhi={road.rhi} showScore={false} size="sm" />
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setScheduleRoad(road);
+                                      setScheduleError(null);
+                                      setMaintenanceType(MAINTENANCE_TYPES[0]);
+                                    }}
+                                    className="inline-flex items-center gap-1.5 rounded bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Schedule Repair
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
                           )}
-                        </td>
-
-                        <td className="px-4 py-3 text-foreground font-medium">
-                          {task.contractor}
-                        </td>
-
-                        <td className="px-4 py-3 font-mono font-bold text-foreground">
-                          ₹{task.estimatedCostLakh} L
-                        </td>
-
-                        <td className="px-4 py-3">
-                          <span
-                            className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${task.status === "in_progress"
-                              ? "bg-blue-50 text-blue-700 border border-blue-200"
-                              : task.status === "completed"
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : task.status === "scheduled"
-                                  ? "bg-purple-50 text-purple-700 border border-purple-200"
-                                  : "bg-amber-50 text-amber-700 border border-amber-200"
-                              }`}
-                          >
-                            {task.status.replace("_", " ")}
-                          </span>
-                        </td>
-
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {task.status !== "in_progress" && task.status !== "completed" && (
-                              <button
-                                onClick={() => handleUpdateStatus(task.id, "in_progress")}
-                                className="rounded bg-blue-50 text-blue-700 px-2 py-1 text-[11px] font-semibold hover:bg-blue-100 transition-colors cursor-pointer"
-                              >
-                                Start Work
-                              </button>
-                            )}
-
-                            {task.status === "in_progress" && (
-                              <button
-                                onClick={() => handleUpdateStatus(task.id, "completed")}
-                                className="rounded bg-emerald-50 text-emerald-700 px-2 py-1 text-[11px] font-semibold hover:bg-emerald-100 transition-colors cursor-pointer"
-                              >
-                                Mark Complete
-                              </button>
-                            )}
-
-                            {task.status === "completed" && (
-                              <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600">
-                                <CheckCircle2 className="h-3.5 w-3.5" /> Verified
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+
+                {activeTab === "manage" && (
+                  <section className="panel overflow-hidden">
+                    <div className="border-b border-border px-4 py-3">
+                      <h2 className="text-sm font-semibold text-foreground">Active Repairs</h2>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Update work progress or move a finished repair into history.
+                      </p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="border-b border-border bg-muted/40 text-[10px] font-semibold uppercase text-muted-foreground">
+                          <tr>
+                            <th className="px-4 py-3">ID / Repair Type</th>
+                            <th className="px-4 py-3">Road</th>
+                            <th className="px-4 py-3">Scheduled</th>
+                            <th className="px-4 py-3">Status</th>
+                            <th className="px-4 py-3">Progress</th>
+                            <th className="px-4 py-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/60">
+                          {maintenance.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
+                                No active repair records for this ward.
+                              </td>
+                            </tr>
+                          ) : (
+                            maintenance.map((record) => (
+                              <tr key={record.id} className="hover:bg-muted/30">
+                                <td className="px-4 py-3">
+                                  <span className="block font-mono font-bold">#{record.id}</span>
+                                  <span className="text-muted-foreground">{record.maintenance_type}</span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="block font-semibold">{record.road_name}</span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    #{record.road_id} • {record.road_type}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">{formatDate(record.scheduled_date)}</td>
+                                <td className="px-4 py-3">
+                                  <span className="rounded bg-blue-500/10 px-2 py-1 text-[10px] font-semibold uppercase text-blue-700">
+                                    {record.status.replaceAll("_", " ")}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <label className="sr-only" htmlFor={`progress-${record.id}`}>Progress percentage</label>
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      id={`progress-${record.id}`}
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      step="1"
+                                      value={progressValues[record.id] ?? String(record.progress)}
+                                      onChange={(event) =>
+                                        setProgressValues((current) => ({
+                                          ...current,
+                                          [record.id]: event.target.value,
+                                        }))
+                                      }
+                                      className="w-20 rounded border border-input bg-background px-2 py-1.5 font-mono"
+                                    />
+                                    <span>%</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      disabled={updatingId === record.id}
+                                      onClick={() => void handleUpdateProgress(record)}
+                                      className="rounded bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 disabled:opacity-50"
+                                    >
+                                      {updatingId === record.id ? "Updating..." : "Update Progress"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={updatingId === record.id}
+                                      onClick={() => void handleCompleteRepair(record)}
+                                      className="rounded bg-emerald-500/10 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 disabled:opacity-50"
+                                    >
+                                      {updatingId === record.id ? "Working..." : "Repair Complete"}
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                )}
+
+                {activeTab === "history" && (
+                  <section className="panel overflow-hidden">
+                    <div className="border-b border-border px-4 py-3">
+                      <h2 className="text-sm font-semibold text-foreground">Repair History</h2>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="border-b border-border bg-muted/40 text-[10px] font-semibold uppercase text-muted-foreground">
+                          <tr>
+                            <th className="px-4 py-3">Record ID</th>
+                            <th className="px-4 py-3">Road</th>
+                            <th className="px-4 py-3">Repair Type</th>
+                            <th className="px-4 py-3">Start Date</th>
+                            <th className="px-4 py-3">Completed Date</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/60">
+                          {history.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
+                                No repair history for this ward.
+                              </td>
+                            </tr>
+                          ) : (
+                            history.map((record) => (
+                              <tr key={record.id}>
+                                <td className="px-4 py-3 font-mono font-bold">#{record.id}</td>
+                                <td className="px-4 py-3">
+                                  {record.road_name}
+                                  <span className="block text-[10px] text-muted-foreground">
+                                    #{record.road_id} • {record.road_type}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">{record.maintenance_type}</td>
+                                <td className="px-4 py-3">{formatDate(record.start_date)}</td>
+                                <td className="px-4 py-3">{formatDate(record.completed_date)}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
+          </>
+        )}
       </div>
 
-      {/* New Maintenance Work Order Modal */}
-      <MaintenanceModal
-        isOpen={scheduleModalOpen}
-        onClose={() => setScheduleModalOpen(false)}
-        roads={roads}
-        onSave={handleCreateTask}
-      />
+      {scheduleRoad && (
+        <div
+          className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60 p-4"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !saving) setScheduleRoad(null);
+          }}
+        >
+          <form
+            onSubmit={handleSchedule}
+            className="w-full max-w-lg space-y-4 rounded-xl border border-border bg-card p-6 shadow-2xl"
+            aria-labelledby="schedule-repair-title"
+          >
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div>
+                <h2 id="schedule-repair-title" className="text-base font-semibold text-foreground">
+                  Schedule Repair
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {scheduleRoad.name} • Road #{scheduleRoad.id}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setScheduleRoad(null)}
+                className="rounded p-2 text-muted-foreground hover:bg-muted"
+                aria-label="Close schedule repair form"
+              >
+                ×
+              </button>
+            </div>
+
+            {scheduleError && (
+              <div role="alert" className="rounded-md border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-xs text-rose-700">
+                {scheduleError}
+              </div>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-1 text-xs font-medium">
+                <span className="label-caps">Road ID</span>
+                <input
+                  type="number"
+                  value={scheduleRoad.id}
+                  readOnly
+                  className="w-full rounded-md border border-input bg-muted px-3 py-2"
+                />
+              </label>
+              <label className="space-y-1 text-xs font-medium">
+                <span className="label-caps">Scheduled Date</span>
+                <input
+                  type="datetime-local"
+                  required
+                  value={scheduledDate}
+                  onChange={(event) => setScheduledDate(event.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2"
+                />
+              </label>
+              <label className="space-y-1 text-xs font-medium">
+                <span className="label-caps">Maintenance Type</span>
+                <select
+                  required
+                  value={maintenanceType}
+                  onChange={(event) => setMaintenanceType(event.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2"
+                >
+                  {MAINTENANCE_TYPES.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setScheduleRoad(null)}
+                className="rounded-md border border-border px-4 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />}
+                Schedule Repair
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </AppShell>
   );
 }

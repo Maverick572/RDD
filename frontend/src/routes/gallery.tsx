@@ -11,6 +11,7 @@ import {
   Camera,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { LocateMapAtCurrentPosition } from "@/components/map/LocateMapAtCurrentPosition";
 import {
   MapContainer,
   TileLayer,
@@ -407,6 +408,12 @@ function GalleryPage() {
                 <TileLayer
                   attribution="&copy; OpenStreetMap contributors"
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <LocateMapAtCurrentPosition
+                  zoom={12}
+                  onLocated={({ latitude, longitude }) =>
+                    setCenter({ latitude, longitude })
+                  }
                 />
 
                 {wardGeoJSON && (

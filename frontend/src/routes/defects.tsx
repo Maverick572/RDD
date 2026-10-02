@@ -11,6 +11,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { LocateMapAtCurrentPosition } from "@/components/map/LocateMapAtCurrentPosition";
 import {
   MapContainer,
   TileLayer,
@@ -20,6 +21,11 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/defects")({
   component: DefectsPage,
@@ -154,6 +160,7 @@ function DefectsPage() {
   const [activeWard, setActiveWard] = useState<Ward | null>(null);
   const [wardDefects, setWardDefects] = useState<WardDefect[]>([]);
   const [defectsLoading, setDefectsLoading] = useState(false);
+  const [photoDefect, setPhotoDefect] = useState<WardDefect | null>(null);
 
   // When a defect row is clicked: highlighted road + fly target
   const [selectedDefect, setSelectedDefect] = useState<WardDefect | null>(null);
@@ -419,6 +426,12 @@ function DefectsPage() {
                   attribution="&copy; OpenStreetMap contributors"
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
+                <LocateMapAtCurrentPosition
+                  zoom={12}
+                  onLocated={({ latitude, longitude }) =>
+                    setCenter({ latitude, longitude })
+                  }
+                />
 
                 {/* Ward polygons */}
                 {wardGeoJSON && (
@@ -637,15 +650,28 @@ function DefectsPage() {
                             </td>
 
                             <td className="px-4 py-3 text-right">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDefectClick(defect);
-                                }}
-                                className="rounded bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
-                              >
-                                Zoom In →
-                              </button>
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDefectClick(defect);
+                                  }}
+                                  className="rounded bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
+                                >
+                                  Zoom In →
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPhotoDefect(defect);
+                                  }}
+                                  disabled={!defect.image_url}
+                                  title={!defect.image_url ? "No photo available" : undefined}
+                                  className="rounded bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  View Photo
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -701,6 +727,25 @@ function DefectsPage() {
           </div>
         )}
       </div>
+      <Dialog
+        open={photoDefect !== null}
+        onOpenChange={(open) => {
+          if (!open) setPhotoDefect(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] max-w-4xl overflow-hidden p-6">
+          <DialogTitle className="sr-only">
+            Defect photo {photoDefect?.id}
+          </DialogTitle>
+          {photoDefect?.image_url && (
+            <img
+              src={photoDefect.image_url}
+              alt={`Photo of ${getDefectDisplayName(photoDefect.type)} defect`}
+              className="max-h-[calc(90vh-3rem)] w-full rounded object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

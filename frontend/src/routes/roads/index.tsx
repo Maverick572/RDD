@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { LocateMapAtCurrentPosition } from "@/components/map/LocateMapAtCurrentPosition";
 import { RhiBadge } from "@/components/road/RhiBadge";
 import { rhiBand, RHI_HEX } from "@/lib/rhi";
 import {
@@ -44,6 +45,7 @@ interface WardRoad {
   name: string;
   type: string;
   rhi: number | null;
+  defect_count: number;
   geometry: GeoJSON.Geometry | null;
 }
 
@@ -131,7 +133,7 @@ function RoadsPage() {
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [selectedBand, setSelectedBand] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"rhi_desc" | "rhi_asc" | "name_asc">("rhi_desc");
+  const [sortBy, setSortBy] = useState<"rhi_desc" | "rhi_asc" | "name_asc">("rhi_asc");
 
   // Map center for coordinates display
   const [center, setCenter] = useState({
@@ -432,6 +434,12 @@ function RoadsPage() {
                   attribution="&copy; OpenStreetMap contributors"
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
+                <LocateMapAtCurrentPosition
+                  zoom={12}
+                  onLocated={({ latitude, longitude }) =>
+                    setCenter({ latitude, longitude })
+                  }
+                />
 
                 {/* Ward polygons */}
                 {wardGeoJSON && (
@@ -644,6 +652,7 @@ function RoadsPage() {
                         <th className="px-4 py-3">Corridor / Road Name</th>
                         <th className="px-4 py-3">Type / Class</th>
                         <th className="px-4 py-3">Health Index (RHI)</th>
+                        <th className="px-4 py-3">Defect Count</th>
                         <th className="px-4 py-3">Condition Status</th>
                         <th className="px-4 py-3 text-right">Action</th>
                       </tr>
@@ -702,6 +711,10 @@ function RoadsPage() {
                                   Unrated
                                 </span>
                               )}
+                            </td>
+
+                            <td className="px-4 py-3 font-mono font-semibold text-foreground">
+                              {road.defect_count}
                             </td>
 
                             <td className="px-4 py-3">

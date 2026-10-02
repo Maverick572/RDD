@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { LocateMapAtCurrentPosition } from "@/components/map/LocateMapAtCurrentPosition";
 import { DEFECT_LABEL, formatDate, rhiBand, RHI_HEX, SEVERITY_LABEL } from "@/lib/rhi";
 import { roadsService } from "@/services/roads.service";
 import type { Road } from "@/types";
@@ -422,6 +423,10 @@ function MediaAnalysisPage() {
                     attribution="&copy; OpenStreetMap contributors"
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
+                  <LocateMapAtCurrentPosition
+                    zoom={15}
+                    onLocated={handleLocationChange}
+                  />
 
                   {nearestRoad?.geometry && (
                     <GeoJSON
@@ -546,7 +551,9 @@ function MediaAnalysisPage() {
                       Detection Result
                     </span>
                     <h3 className="text-base font-bold text-foreground">
-                      {detectionError === "Defects not found"
+                      {detectionError === "Complaint already registered"
+                        ? "Complaint already registered"
+                        : detectionError === "Defects not found"
                         ? "No Road Defects Found"
                         : detectionError === "Location not found"
                           ? "Road Location Not Matched"
@@ -555,7 +562,9 @@ function MediaAnalysisPage() {
                   </div>
 
                   <p className="text-xs text-muted-foreground">
-                    {detectionError === "Defects not found"
+                    {detectionError === "Complaint already registered"
+                      ? "Complaint already registered"
+                      : detectionError === "Defects not found"
                       ? "The AI model analyzed your uploaded image and found no detectable surface distress (potholes, cracks, rutting) above the confidence threshold. The pavement appears to be in good condition or distress was not clear."
                       : detectionError === "Location not found"
                         ? "The coordinates provided could not be matched to any registered road corridor in the database. Please scroll the map closer to a road segment and try again."
@@ -753,4 +762,3 @@ function MediaAnalysisPage() {
     </AppShell>
   );
 }
-

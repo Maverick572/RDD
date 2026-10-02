@@ -25,12 +25,12 @@ gallery, and media detection pages make direct HTTP requests to the backend.
 
 ## Current Scope And Limitations
 
-- The live database endpoints are focused on wards, roads, defects, dashboard
-  data, nearest-road lookup, and the image detection workflow.
-- There is no backend `/maintenance`, `/analytics/summary`, `/roads/{id}`,
-  `/media/upload`, or `/analysis` endpoint in the current FastAPI application.
-- The frontend routes `/analytics`, `/maintenance`, and `/roads/$id` use
-  service modules backed by in-memory mock data.
+- The live database endpoints cover wards, roads, defects, dashboard data,
+  nearest-road lookup, image detection, and ward-scoped maintenance workflows.
+- There is no backend `/analytics/summary`, `/roads/{id}`, `/media/upload`, or
+  `/analysis` endpoint in the current FastAPI application.
+- The frontend routes `/analytics` and `/roads/$id` use service modules backed
+  by in-memory mock data.
 - `roads.service.ts`, `defects.service.ts`, `maintenance.service.ts`,
   `media.service.ts`, and `admin.service.ts` are not general API clients; they
   read and update the corresponding files in `frontend/src/mock-data/`.
@@ -50,7 +50,7 @@ gallery, and media detection pages make direct HTTP requests to the backend.
 | `/defects` | Ward defect registry | FastAPI ward defects and nearest-road endpoint |
 | `/gallery` | Defect-image gallery | FastAPI ward defects and nearest-road endpoint |
 | `/media` | Image upload and detection | FastAPI nearest-road and detection endpoints; road service data is mock-backed |
-| `/maintenance` | Work-order tracker | In-memory mock maintenance and road services |
+| `/maintenance` | Ward-scoped repair scheduling, active repair management, and history | FastAPI ward, road, and maintenance endpoints |
 | `/analytics` | Analytics charts | In-memory mock analytics, roads, defects, and maintenance services |
 
 The route definitions live in `frontend/src/routes/`. TanStack's generated route
@@ -253,6 +253,8 @@ The tables/columns referenced by the current Python code are:
 | `roads` | `id`, `name`, `type`, `rhi`, `geometry`, `timestamp` | `geometry` must support the geography operations used in the code. `rhi` is updated after successful detection. |
 | `wards` | `id`, `ward_number`, `node`, `municipal_corporation`, `geometry` | Ward geometry is used for spatial joins and map output. |
 | `defects` | `id`, `road_id`, `type`, `confidence`, `severity`, `location`, `image_url`, `timestamp` | `location` is used for spatial lookups; `severity` stores a numeric score from detection. |
+| `maintenance` | `id`, `road_id`, `scheduled_date`, `progress`, `status`, `maintenance_type` | Active repair records. |
+| `maintenance_history` | `id`, `road_id`, `start_date`, `completed_date`, `maintenance_type` | A record is inserted here when an active repair is completed. |
 
 The import and API code expects database-generated IDs for inserted roads,
 wards, and defects. The geometry columns must accept the PostGIS casts and
@@ -386,6 +388,18 @@ Returns defects spatially within a ward, newest first. Each item includes:
 
 The top-level response is `{"ward_number": ..., "defects": [...]}`. Defect
 location is derived from the PostGIS point stored in `defects.location`.
+
+### Maintenance
+
+Maintenance endpoints are scoped to roads intersecting the selected ward:
+
+| Method | Path | Behavior |
+|---|---|---|
+| `GET` | `/wards/{ward_number}/maintenance` | Lists active repair records with road details. |
+| `GET` | `/wards/{ward_number}/maintenance/history` | Lists completed repair records from `maintenance_history`. |
+| `POST` | `/maintenance/schedule` | Creates an active repair using `road_id`, `scheduled_date`, and `maintenance_type`. |
+| `PUT` | `/maintenance/{maintenance_id}` | Updates a repair's `status` and percentage `progress`. |
+| `POST` | `/maintenance/{maintenance_id}/complete` | Moves the active repair into history and removes it from `maintenance`. |
 
 ### Dashboard
 

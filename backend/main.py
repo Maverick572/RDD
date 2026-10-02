@@ -9,6 +9,10 @@ from backend.find_nearest import router as nearest_router
 from backend.ward_defects import router as ward_defects_router
 from backend.ward_roads import router as ward_roads_router
 from backend.dashboard import router as dashboard_router
+from backend.schedule_maintenance import router as schedule_maintenance_router
+from backend.complete_maintenance import router as complete_maintenance_router
+from backend.update_maintenance import router as update_maintenance_router
+from backend.maintenance_records import router as maintenance_records_router
 
 load_dotenv()
 
@@ -55,4 +59,7 @@ app.include_router(nearest_router)
 app.include_router(ward_defects_router)
 app.include_router(ward_roads_router)
 app.include_router(dashboard_router)
-
+app.include_router(schedule_maintenance_router)
+app.include_router(complete_maintenance_router)
+app.include_router(update_maintenance_router)
+app.include_router(maintenance_records_router)

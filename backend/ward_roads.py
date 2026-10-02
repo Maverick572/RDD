@@ -26,6 +26,7 @@ def get_ward_roads(ward_number: int):
                 r.name,
                 r.type,
                 r.rhi,
+                COALESCE(r.defect_count, 0) AS defect_count,
                 ST_AsGeoJSON(r.geometry) AS geometry
             FROM roads r
             JOIN wards w
@@ -45,9 +46,9 @@ def get_ward_roads(ward_number: int):
 
         for row in rows:
             geo = None
-            if row[4]:
+            if row[5]:
                 try:
-                    geo = json.loads(row[4])
+                    geo = json.loads(row[5])
                 except Exception:
                     geo = None
             roads.append({
@@ -55,6 +56,7 @@ def get_ward_roads(ward_number: int):
                 "name": row[1] or "Unnamed Road",
                 "type": row[2] or "road",
                 "rhi": row[3],
+                "defect_count": row[4],
                 "geometry": geo
             })
 

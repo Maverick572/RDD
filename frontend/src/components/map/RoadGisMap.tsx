@@ -77,10 +77,6 @@ export const RoadGisMap: React.FC<RoadGisMapProps> = ({
       zoom: INDIA.zoom,
       zoomControl: false,
       attributionControl: true,
-      maxBounds: [
-        [4.0, 65.0],
-        [38.0, 100.0],
-      ],
       minZoom: 4,
     });
 
@@ -107,6 +103,20 @@ export const RoadGisMap: React.FC<RoadGisMapProps> = ({
     roadsLayerGroupRef.current = roadsGroup;
     defectsLayerGroupRef.current = defectsGroup;
     mapInstanceRef.current = map;
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          if (mapInstanceRef.current === map) {
+            map.setView([coords.latitude, coords.longitude], map.getZoom());
+          }
+        },
+        () => {
+          // Keep the default map center when location is unavailable.
+        },
+        { enableHighAccuracy: false, maximumAge: 60_000, timeout: 10_000 }
+      );
+    }
 
     return () => {
       map.remove();
@@ -137,8 +147,6 @@ export const RoadGisMap: React.FC<RoadGisMapProps> = ({
       map.flyToBounds(selectedDistrict.bounds, { padding: [40, 40], duration: 1.2 });
     } else if (selectedState) {
       map.flyToBounds(selectedState.bounds, { padding: [40, 40], duration: 1.2 });
-    } else {
-      map.flyTo(INDIA.center, INDIA.zoom, { duration: 1.2 });
     }
   }, [selectedState, selectedDistrict, selectedCity, selectedRoadId, roads]);
 

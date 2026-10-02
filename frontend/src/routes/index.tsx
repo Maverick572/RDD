@@ -30,6 +30,7 @@ import {
   Pie,
 } from "recharts";
 import { AppShell } from "@/components/layout/AppShell";
+import { LocateMapAtCurrentPosition } from "@/components/map/LocateMapAtCurrentPosition";
 import {
   MapContainer,
   TileLayer,
@@ -443,6 +444,7 @@ function DashboardPage() {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
+              <LocateMapAtCurrentPosition zoom={12} />
 
               {/* 1. Ward Polygons (No hover details per request) */}
               {wardGeoJSON && (
