@@ -13,7 +13,7 @@ export const Route = createFileRoute("/maintenance")({
   component: MaintenancePage,
 });
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "http://localhost:8001";
 const MAINTENANCE_TYPES = [
   "Pothole patching",
   "Crack sealing",

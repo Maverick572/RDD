@@ -130,7 +130,7 @@ function MediaAnalysisPage() {
     setIsFetchingRoad(true);
     try {
       const response = await fetch(
-        `http://localhost:8000/roads/nearest?lat=${lat}&lng=${lng}&threshold=100`
+        `http://localhost:8001/roads/nearest?lat=${lat}&lng=${lng}&threshold=100`
       );
       if (response.ok) {
         const data = await response.json();
@@ -216,7 +216,7 @@ function MediaAnalysisPage() {
       const formData = new FormData();
       formData.append("file", selectedFile);
 
-      const url = `http://localhost:8000/detect?lat=${location.latitude}&lng=${location.longitude}`;
+      const url = `http://localhost:8001/detect?lat=${location.latitude}&lng=${location.longitude}`;
       const response = await fetch(url, {
         method: "POST",
         body: formData,
@@ -242,7 +242,7 @@ function MediaAnalysisPage() {
     } catch (err: any) {
       clearInterval(interval);
       setDetectionError(
-        err.message || "Failed to reach backend server at http://localhost:8000"
+        err.message || "Failed to reach backend server at http://localhost:8001"
       );
       setDetectionResult(null);
     } finally {

@@ -51,7 +51,7 @@ interface WardRoad {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "http://localhost:8001";
 
 function wardFillColor(defectCount: number): string {
   if (defectCount === 0) return "#22c55e";

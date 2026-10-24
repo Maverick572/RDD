@@ -36,9 +36,59 @@ gallery, and media detection pages make direct HTTP requests to the backend.
   read and update the corresponding files in `frontend/src/mock-data/`.
 - The media detection screen sends a single image to `POST /detect`. It is not
   the video-upload / asynchronous-analysis API described in older documentation.
-- There is no checked-in Python requirements file, SQL schema/migration,
-  Docker configuration, or frontend test script at the time this README was
-  written.
+- There is no general Python requirements file, SQL schema/migration, Docker
+  configuration, or frontend test script at the time this README was written.
+- The ESP32-CAM hardware receiver and its Streamlit live dashboard are available
+  separately from the main detection API; see
+  [IoT hardware receiver](#iot-hardware-receiver).
+
+## IoT Hardware Receiver
+
+The standalone receiver accepts the ESP32-CAM multipart JPEG and GPS/MPU6050
+metadata at `POST /detect` (and `POST /iot/ingest`). It displays the Arduino
+UNO's 5-second dynamic-acceleration RMS and peak readings alongside the GPS
+fix. Images and telemetry are kept in a bounded in-memory buffer (the latest 20
+uploads), not retained in local folders; the buffer is cleared when the
+receiver restarts. The shared detection pipeline uses temporary files under the
+existing `uploads/` and `outputs/` folders and cleans them after processing.
+Successful annotated images are also stored in the existing Supabase bucket.
+Each IoT image also runs through the shared YOLO, nearest-road, duplicate-check,
+Supabase annotated-image, defect database, and road-health pipeline. IoT
+severity combines the existing visual score with vibration RMS:
+`0.8 * visual_score + 0.2 * min(max(dynamic_magnitude_rms / 2.0, 0), 1) * 100`.
+The vibration component saturates at 2 m/s²; since both inputs are in the
+0–100 range, the blended score remains in that range. If valid IMU RMS is
+unavailable, the visual-only score is used. Regular uploads to the main
+`/detect` endpoint do not supply vibration and keep their original severity
+calculation.
+The dashboard shows both the captured frame and the model's annotated
+inference image. A GPS fix (or GPS coordinates embedded in the image) is needed
+to associate a detected defect with a nearby road and store it. The receiver
+rejects later IoT captures with HTTP 409 until the inference image is visible in
+the dashboard and its acknowledgement button is clicked.
+
+From the repository root, install dependencies once:
+
+```powershell
+.\venv\Scripts\python.exe -m pip install -r backend\requirements-iot.txt
+```
+
+Start the receiver first in one terminal:
+
+```powershell
+.\venv\Scripts\python.exe -m uvicorn backend.iot:app --host 0.0.0.0 --port 8000
+```
+
+Then open a second terminal in the same repository and start Streamlit:
+
+```powershell
+.\venv\Scripts\python.exe -m streamlit run backend\iot_dashboard.py
+```
+
+Open the URL Streamlit prints (usually `http://localhost:8501`). Configure the
+ESP32 with the computer's LAN IP address and port `8000`; the dashboard refreshes
+automatically while the receiver is running. If Streamlit runs on a different
+computer, set `IOT_API_URL` to the receiver's reachable URL before starting it.
 
 ## Screens And Routes
 
@@ -149,7 +199,7 @@ Configuration notes:
   or put a server-side Supabase key into frontend code.
 - The root `.gitignore` excludes `.env`, `.env.local`, `.env.*.local`, and
   `.dev.vars`. Check `git status` before committing configuration changes.
-- The frontend currently hardcodes `http://localhost:8000` in the route files
+- The frontend currently hardcodes `http://localhost:8001` in the route files
   that call the backend. `VITE_API_URL` is not currently used for those calls.
 - `backend/main.py` enables permissive CORS for development. Restrict origins
   before deploying the API publicly.
@@ -194,18 +244,18 @@ python -m pip install fastapi "uvicorn[standard]" python-multipart python-dotenv
 cannot install a compatible PyTorch wheel through the Ultralytics dependency,
 install the appropriate PyTorch build first and then rerun the package command.
 
-### Start FastAPI
+### Start The Main FastAPI API
 
 ```bash
-python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+python -m backend.main
 ```
 
 Useful local URLs:
 
-- API root: `http://localhost:8000/`
-- Health check: `http://localhost:8000/health`
-- Interactive OpenAPI docs: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+- API root: `http://localhost:8001/`
+- Health check: `http://localhost:8001/health`
+- Interactive OpenAPI docs: `http://localhost:8001/docs`
+- ReDoc: `http://localhost:8001/redoc`
 
 The API imports the YOLO model during application startup. A missing/incompatible
 model or missing Python package can prevent startup. The Supabase client is also
@@ -449,7 +499,7 @@ no usable GPS EXIF metadata.
 ```bash
 curl -X POST \
   -F "file=@./road-inspection.jpg" \
-  "http://localhost:8000/detect?lat=19.0330&lng=73.0297"
+  "http://localhost:8001/detect?lat=19.0330&lng=73.0297"
 ```
 
 On success, the response contains these fields:
@@ -575,7 +625,7 @@ The frontend currently has two data paths.
 | Gallery `/gallery` | `/wards`, `/wards/{ward_number}/defects`, and `/roads/nearest` when an image is selected. |
 | Media `/media` | `/roads/nearest` and `/detect`; it also calls the mock-backed road service for some road data. |
 
-These routes define `API_BASE` as `http://localhost:8000` or call that URL
+These routes define `API_BASE` as `http://localhost:8001` or call that URL
 directly. Changing the API host currently requires editing the relevant route
 source; setting `VITE_API_URL` alone will not reconfigure these requests.
 
@@ -599,8 +649,8 @@ module does not mean its data is stored by FastAPI or PostgreSQL.
 
 ### Frontend Shows A Network Error
 
-- Confirm the backend is running at `http://localhost:8000`.
-- Open `http://localhost:8000/health` and check for a healthy response.
+- Confirm the main backend is running at `http://localhost:8001`.
+- Open `http://localhost:8001/health` and check for a healthy response.
 - Check the browser console and the backend terminal for the failing endpoint.
 - The currently live-connected pages use a hardcoded localhost base URL.
 - Confirm CORS and network access if the frontend and backend are on different

@@ -65,7 +65,7 @@ interface NearestRoadInfo {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "http://localhost:8001";
 
 function getDefectDisplayName(typeStr: string): string {
   const map: Record<string, string> = {
