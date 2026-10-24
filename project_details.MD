@@ -12,7 +12,7 @@
 
 1. **Edge Acquisition:** A vehicle-mounted IoT dashcam module (ESP32-CAM + 6-DOF IMU + GNSS GPS) captures high-resolution road pavement imagery paired with synchronized spatio-temporal telemetry and vibration impulse data.
 2. **Computer Vision Inference:** An Ultralytics YOLOv8 deep learning model classifies and localizes surface distresses (longitudinal cracks, transverse cracks, alligator fatigue cracking, potholes, and faded road markings) with sub-second latency.
-3. **Multi-Factor Severity Scoring:** An advanced computer vision algorithm evaluates bounding box footprint, aspect ratio geometry, local grayscale contrast, and Sobel edge density to assign a granular visual distress score ($0–100$) to each detected defect.
+3. **Multi-Factor Severity Scoring:** An advanced computer vision algorithm evaluates bounding box footprint, aspect ratio geometry, local grayscale contrast, and image-gradient edge density to assign a visual distress score ($0–100$) to each detected defect. For IoT captures with valid IMU vibration data, the final score also incorporates measured dynamic acceleration.
 4. **Geospatial Processing & Deduplication:** PostGIS spatial algorithms snap distress coordinates to the nearest official road centerline via K-Nearest Neighbors (KNN) within a 100-meter threshold and execute a 30-meter spatial deduplication radius to prevent redundant citizen or sensor reports.
 5. **Road Health Index (RHI) Quantification:** Continuous mathematical degradation modeling calculates an aggregated RHI score ($0–100$) for every road corridor and records every transition into an append-only audit trail (`road_history`).
 6. **Predictive Maintenance & Intelligent Scheduling:** Statistical degradation forecasting and condition-based thresholding predict pavement failure windows, automatically generate prioritized maintenance work orders, recommend optimal repair methods, and manage the full lifecycle from scheduling to completion and health restoration.
@@ -128,7 +128,7 @@ The road inspection vehicle is equipped with a custom low-cost, high-reliability
 
 ### 3.2 Firmware & Multi-Threaded Execution (FreeRTOS)
 
-The ESP32 firmware executes a multi-tasking FreeRTOS pipeline split across two hardware cores:
+The intended ESP32 firmware executes a multi-tasking FreeRTOS pipeline split across two hardware cores:
 
 - **Core 0 (Telemetry & Ingestion Engine):**
   - **GNSS Parser Task:** Continuously extracts decimal coordinates, timestamp, and satellite lock status.
@@ -142,10 +142,26 @@ The ESP32 firmware executes a multi-tasking FreeRTOS pipeline split across two h
 
 ### 3.3 Network Payload Format
 
-The IoT module transmits data as standard `multipart/form-data`:
-- **File Field (`file`):** Raw JPEG binary stream from the OV2640 sensor.
-- **Query Parameters / Headers:** `?lat=19.033045&lng=73.029712` (provides instantaneous fallback coordinates if EXIF parsing encounters corrupted JPEG frames).
-- **Telemetry Headers (Optional Extension):** `X-Device-ID: ESP32-RDD-04`, `X-IMU-Z-Shock: 2.14g`, `X-Vehicle-Speed: 38.4kmh`.
+The implemented receiver accepts a `multipart/form-data` request with:
+- **File field (`file`):** JPEG image from the camera (maximum 8 MiB).
+- **Form field (`metadata`):** JSON object containing `sensor_source`, `device_uptime_ms`, `gps`, and `imu` fields. GPS data includes fix validity, latitude/longitude, speed, and location age. IMU data includes validity, sampling-window details, dynamic acceleration magnitudes, per-axis acceleration statistics, and per-axis gyroscope statistics.
+- **Optional query parameters (`lat`, `lng`):** Coordinate fallback when coordinates are missing from the metadata.
+
+The receiver is implemented as a separate FastAPI application in `backend/iot.py`. It accepts uploads at `POST /detect` and `POST /iot/ingest`; it is not mounted in the main application in `backend/main.py`. The receiver validates JPEG uploads and telemetry, then passes each image through the shared detection pipeline. The most recent 20 records, original images, and available inference images are held in memory and are cleared on process restart. Captures are serialized: after inference the receiver waits for the dashboard to acknowledge that the annotated image was displayed before accepting another capture.
+
+The Streamlit dashboard in `backend/iot_dashboard.py` polls the receiver for recent records and status, and displays captured and annotated images, GPS, IMU readings, and detected defects. Set `IOT_API_URL` if the receiver is not at its default URL (`http://127.0.0.1:8000`).
+
+### 3.4 IoT Receiver Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/detect`, `/iot/ingest` | Receive a JPEG and telemetry, run the shared inference and defect pipeline, and return the capture record and detection result. |
+| `GET` | `/iot/records` | Return recent in-memory capture and telemetry records. |
+| `GET` | `/iot/status` | Report whether a capture is processing or awaiting display acknowledgement. |
+| `POST` | `/iot/ack/{record_id}` | Acknowledge the displayed inference image and allow the next capture. |
+| `GET` | `/iot/images/{record_id}` | Retrieve a recent original JPEG from memory. |
+| `GET` | `/iot/inference-images/{record_id}` | Retrieve a recent annotated inference image from memory. |
+| `GET` | `/`, `/health` | Receiver identity and health status. |
 
 ---
 
@@ -221,7 +237,7 @@ Where:
    - *For Potholes (`D40`):* Rewards compact, circular, or square geometry ($\text{compactness} = \min(1.0 / \text{AR}, 1.0)$).
 4. **Visual Texture & Contrast Analysis ($30\%$):** OpenCV crops the bounding box region and computes:
    - *Local Grayscale Contrast:* Standard deviation of pixels normalized by $\sigma / 64.0$.
-   - *Edge Density:* Grayscale spatial gradient magnitude ($|\Delta I_x| > 20$ and $|\Delta I_y| > 20$) measuring structural jaggedness and depth shadowing.
+   - *Edge Density:* Fraction of neighboring-pixel grayscale differences greater than 20, measuring local texture and boundaries.
    $$\text{visual} = 0.5 \cdot \text{contrast} + 0.5 \cdot \text{edge\_density}$$
 
 #### Severity Categorization Scale
@@ -229,6 +245,17 @@ Where:
 - **`moderate`:** $25.0 \le \text{Severity score} < 50.0$
 - **`high`:** $50.0 \le \text{Severity score} < 75.0$
 - **`critical`:** $\text{Severity score} \ge 75.0$
+
+### 4.3 IoT Image Severity Adjustment
+
+IoT images use the same visual severity calculation described above. When the receiver has a valid IMU reading with a dynamic acceleration RMS value, `backend/detect.py` adjusts each detected defect's visual score using that capture's vibration measurement:
+
+$$\text{vibration\_score} = \min(\max(\text{dynamic\_magnitude\_rms} / 2.0, 0), 1) \times 100$$
+$$\text{IoT severity} = 0.8 \times \text{visual severity} + 0.2 \times \text{vibration\_score}$$
+
+The RMS value is in $\text{m/s}^2$; normalization clamps readings to a vibration score from 0 to 100, reaching the maximum at $2.0\ \text{m/s}^2$. The combined score is rounded to two decimal places, and the same four severity bands above are applied to it. If valid RMS data is unavailable, the stored severity remains the image-only visual score.
+
+For IoT detections with vibration data, each returned defect includes `severity` (the combined score), `visual_severity` (the image-only score), and `severity_level` (`low`, `moderate`, `high`, or `critical`). The detection response also includes `imu_dynamic_magnitude_rms` and `severity_formula`. The combined score is stored in the database and used when recalculating the road health index.
 
 ---
 
@@ -541,6 +568,9 @@ The FastAPI application (`backend/main.py`) exposes modular REST endpoints docum
 | **System** | `GET` | `/` | None | API service identity and running confirmation. |
 | **System** | `GET` | `/health` | None | Service liveness probe returning `{"status":"healthy"}`. |
 | **Detection** | `POST` | `/detect` | `file`: Multipart JPEG<br>`lat`, `lng`: Optional Float | Runs YOLOv8 inference, visual severity, deduplication, road snapping, Supabase upload, and RHI update. |
+| **IoT Receiver** | `POST` | `/detect`, `/iot/ingest` | `file`: Multipart JPEG<br>`metadata`: Optional JSON form field<br>`lat`, `lng`: Optional query floats | Separate `backend/iot.py` receiver. Validates and retains recent capture telemetry, runs the shared detection pipeline, and applies vibration-adjusted severity when valid IMU RMS data is available. |
+| **IoT Receiver** | `GET` | `/iot/records`, `/iot/status` | None | Returns recent in-memory capture records and receiver/capture state. |
+| **IoT Receiver** | `GET` / `POST` | `/iot/images/{record_id}`, `/iot/inference-images/{record_id}`, `/iot/ack/{record_id}` | Path: `record_id` | Retrieves a recent original or annotated image, or acknowledges the displayed inference image so the next capture can be accepted. |
 | **Spatial** | `GET` | `/roads/nearest` | `lat`: Float, `lng`: Float<br>`threshold`: Float (default 100) | PostGIS KNN nearest road lookup returning distance in meters and road attributes. |
 | **Wards** | `GET` | `/wards` | None | List of all wards with boundary GeoJSON and dynamic spatial defect counts. |
 | **Wards** | `GET` | `/wards/{ward_number}/roads` | Path: `ward_number` (Int) | All road polylines intersecting the ward boundary, sorted by RHI. |
@@ -735,6 +765,7 @@ python -m backend.import_roads
 | **Frontend Framework** | React 19, Vite 8, TanStack Router, TanStack Start |
 | **GIS & Cartography** | PostGIS, Leaflet, OpenStreetMap, CartoDB Positron, Shapely |
 | **Database & Cloud Storage** | PostgreSQL 15+ (Spatial Geography SRID 4326), Supabase Storage |
+| **IoT Integration** | Separate FastAPI receiver (`backend/iot.py`), multipart JPEG + JSON GPS/IMU telemetry, shared defect pipeline with optional vibration-adjusted severity, in-memory recent-capture API, Streamlit monitor (`backend/iot_dashboard.py`) |
 | **IoT Dashcam Hardware** | ESP32-CAM (Xtensa LX6), OV2640 (2MP), MPU6050 (6-DOF IMU), NEO-6M GNSS |
 | **Primary Domain Standard** | Road Damage Dataset (RDD2022) / Japan Road Association (JRA 2013) |
 | **Target Administrative Node** | Navi Mumbai Municipal Corporation (NMMC) (111 Wards) |
